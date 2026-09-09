@@ -1,0 +1,775 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin", "windows"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int              @id @default(autoincrement())
+  apiKey           String           @unique
+  firstname        String
+  lastname         String
+  email            String?          @unique
+  phone            String           @unique
+  password         String
+  state            String           @default("")
+  pin              String           @default("")
+  pinDisabled      Boolean          @default(false)
+  type             Int              @default(1)
+  wallet           Float            @default(0)
+  refWallet        Float            @default(0)
+  bankNo           String?
+  bankName         String?
+  regStatus        Int              @default(2)
+  verCode          Int              @default(0)
+  kycStatus        String?
+  dob              String?
+  nin              String?
+  bvn              String?
+  referral         String?
+  accountLimit     String           @default("100000")
+  regDate          DateTime         @default(now())
+  lastActivity     DateTime?
+   accountReference String?
+   paystackCustomerCode String?
+   paystackWemaAccount  String?
+   paystackTitanAccount String?
+   payvesselBank    String?
+  palmpayBank      String?
+  fidelityBankRef  String?
+  sterlingBankRef  String?
+  wemaBankRef      String?
+  rolexBankRef     String?
+  safehavenBank    String?
+  banklyBank       String?
+  psb9Bank         String?
+  beneficiaries    Beneficiary[]
+  cacRequests      CACRequest[]
+  transactions     Transaction[]
+  upgradeRequests  UpgradeRequest[]
+  kycVerification  KycVerification?
+  emailOtps        EmailOtp[]
+  recognizedDevices RecognizedDevice[]
+  airtimeToCashes   AirtimeToCash[]
+
+  @@index([accountReference])
+  @@map("users")
+}
+
+model KycVerification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  method    String   // "BVN" or "NIN"
+  number    String   // The BVN or NIN number
+  dob       String
+  firstName String
+  lastName  String
+  status    String   @default("pending") // "pending", "verified", "failed"
+  fee       Float    @default(0)
+  feePaid   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("kyc_verifications")
+}
+
+model Transaction {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  transref       String   @unique
+  servicename    String
+  servicedesc    String
+  amount         String
+  status         Int
+  oldbal         String
+  newbal         String
+  profit         Float    @default(0)
+  apiResponse    String?
+  apiResponseLog String?
+  date           DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, date(sort: Desc)])
+  @@index([userId, servicedesc, date])
+  @@map("transactions")
+}
+
+model Network {
+  id                Int               @id @default(autoincrement())
+  networkCode       String
+  smeId             String            @default("")
+  sme2Id            String            @default("")
+  giftingId         String            @default("")
+  corporateId       String            @default("")
+  couponId          String            @default("")
+  awoofId           String            @default("")
+  vtuId             String            @default("")
+  sharesellId       String            @default("")
+  name              String
+  networkStatus     String            @default("Off")
+  vtuStatus         String            @default("Off")
+  sharesellStatus   String            @default("Off")
+  airtimepinStatus  String            @default("Off")
+  smeStatus         String            @default("Off")
+  sme2Status        String            @default("Off")
+  giftingStatus     String            @default("Off")
+  corporateStatus   String            @default("Off")
+  datapinStatus     String            @default("Off")
+  couponStatus      String            @default("Off")
+  manualOrderStatus String @default("")
+  logoUrl           String            @default("")
+  airtimeDiscounts  AirtimeDiscount[]
+  dataPins          DataPin[]
+  dataPlans         DataPlan[]
+  providerDataPlans    ProviderDataPlan[]
+  providerSettings     NetworkProviderSetting[]
+
+  @@map("networks")
+}
+
+model DataProvider {
+  id       Int                @id @default(autoincrement())
+  name     String             @unique
+  slug     String             @unique
+  status   String             @default("On")
+  apiUrl   String             @default("")
+  apiKey   String             @default("")
+  authType String             @default("basic")
+  plans    ProviderDataPlan[]
+
+  @@map("data_providers")
+}
+
+model ProviderDataPlan {
+  id          Int          @id @default(autoincrement())
+  providerId  Int
+  networkId   Int
+  networkCode String       @default("")
+  name        String
+  planCode    String
+  type        String
+  buyingPrice String
+  userPrice   String
+  vendorPrice String
+  validity    String
+  status      String       @default("On")
+  provider    DataProvider @relation(fields: [providerId], references: [id])
+  network     Network      @relation(fields: [networkId], references: [id])
+
+  @@map("provider_data_plans")
+}
+
+model NetworkProviderSetting {
+  id           Int     @id @default(autoincrement())
+  networkId    Int
+  providerSlug String
+  extNetworkId String  @default("")
+  network      Network @relation(fields: [networkId], references: [id])
+
+  @@unique([networkId, providerSlug])
+  @@map("network_provider_settings")
+}
+
+model AirtimeDiscount {
+  id             Int     @id @default(autoincrement())
+  networkId      Int
+  providerSlug   String  @default("")
+  buyDiscount    Float   @default(96)
+  userDiscount   Float
+  vendorDiscount Float
+  type           String
+  network        Network @relation(fields: [networkId], references: [id])
+
+  @@map("airtime_discounts")
+}
+
+model AirtimePinPlan {
+  id           Int     @id @default(autoincrement())
+  networkId    Int
+  planSize     String
+  buyingPrice  Float
+  userPrice    Float
+  vendorPrice  Float
+  loadPin      String?
+  checkBalance String?
+  planCode     Int
+
+  @@map("airtime_pin_plans")
+}
+
+model AirtimePinPrice {
+  id             Int   @id @default(autoincrement())
+  networkId      Int
+  userDiscount   Float
+  vendorDiscount Float
+
+  @@map("airtime_pin_prices")
+}
+
+model AirtimePinStock {
+  id        Int      @id @default(autoincrement())
+  networkId Int?
+  amount    Float?
+  tokens    String?
+  serial    String?
+  status    String   @default("Unused")
+  soldTo    String?
+  date      DateTime @default(now())
+
+  @@map("airtime_pin_stock")
+}
+
+model DataPlan {
+  id          Int     @id @default(autoincrement())
+  name        String
+  buyingPrice String
+  userPrice   String
+  vendorPrice String
+  planCode    String
+  type        String?
+  networkId   Int
+  validity    String
+  network     Network @relation(fields: [networkId], references: [id])
+
+  @@map("data_plans")
+}
+
+model DataPin {
+  id          Int         @id @default(autoincrement())
+  name        String
+  buyingPrice String
+  userPrice   String
+  vendorPrice String
+  planCode    String
+  type        String?
+  networkId   Int
+  validity    String
+  network     Network     @relation(fields: [networkId], references: [id])
+  tokens      DataToken[]
+
+  @@map("data_pins")
+}
+
+model DataToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  transRef  String
+  business  String
+  network   String
+  dataSize  String
+  quantity  Int
+  serial    String
+  tokens    String
+  date      DateTime @default(now())
+  dataPinId Int?
+  dataPin   DataPin? @relation(fields: [dataPinId], references: [id])
+
+  @@map("data_tokens")
+}
+
+model RechargeToken {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  transRef String
+  business String
+  network  String
+  dataSize String
+  quantity Int
+  serial   String
+  tokens   String
+  date     DateTime @default(now())
+
+  @@map("recharge_tokens")
+}
+
+model CableProvider {
+  id        Int         @id @default(autoincrement())
+  cableCode String
+  name      String
+  status    String      @default("On")
+  plans     CablePlan[]
+
+  @@map("cable_providers")
+}
+
+model CablePlan {
+  id          Int           @id @default(autoincrement())
+  name        String
+  buyingPrice String
+  userPrice   String
+  vendorPrice String
+  planCode    String
+  type        String?
+  providerId  Int
+  validity    String
+  provider    CableProvider @relation(fields: [providerId], references: [id])
+
+  @@map("cable_plans")
+}
+
+model ElectricityProvider {
+  id              Int    @id @default(autoincrement())
+  electricityCode String
+  name            String
+  abbreviation    String
+  status          String @default("On")
+
+  @@map("electricity_providers")
+}
+
+model ExamProvider {
+  id          Int    @id @default(autoincrement())
+  examCode    String
+  name        String
+  price       Int    @default(0)
+  buyingPrice Int    @default(0)
+  status      String @default("On")
+
+  @@map("exam_providers")
+}
+
+model DataCardPlan {
+  id           Int      @id @default(autoincrement())
+  name         String
+  networkId    Int
+  networkName  String
+  planType     Int
+  cardName     String
+  buyingPrice  String   @default("0")
+  userPrice    String
+  vendorPrice  String
+  loadPin      String?
+  checkBalance String?
+  validity     String   @default("30")
+  status       String   @default("On")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("data_card_plans")
+}
+
+model RechargeCardPlan {
+  id           Int      @id @default(autoincrement())
+  name         String
+  networkId    Int
+  networkName  String
+  planType     Int
+  cardName     String
+  buyingPrice  String   @default("0")
+  userPrice    String
+  vendorPrice  String
+  loadPin      String?
+  checkBalance String?
+  status       String   @default("On")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("recharge_card_plans")
+}
+
+model AlphaTopupPrice {
+  id           Int      @id @default(autoincrement())
+  buyingPrice  Int
+  sellingPrice Int
+  vendorPrice  Int
+  createdAt    DateTime @default(now())
+
+  @@map("alpha_topup_prices")
+}
+
+model ApiConfig {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  value     String?
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("api_configs")
+}
+
+model ApiLink {
+  id     Int     @id @default(autoincrement())
+  name   String
+  value  String?
+  type   String?
+  apiKey String  @default("")
+
+  @@map("api_links")
+}
+
+model SiteSetting {
+  id                   Int    @id @default(autoincrement())
+  sitename             String @default("GUCHOR DATA")
+  siteurl              String @default("https://yourdomain.com")
+  vendorUpgradeFee     String @default("1000")
+  apiDocumentation     String @default("")
+  phone                String @default("")
+  email                String @default("")
+  whatsapp             String @default("")
+  whatsappGroup        String @default("")
+  facebook             String @default("")
+  twitter              String @default("")
+  instagram            String @default("")
+  telegram             String @default("")
+  referralUpgradeBonus Float  @default(100)
+  referralAirtimeBonus Float  @default(0.2)
+  referralDataBonus    Float  @default(1)
+  referralWalletBonus  Float  @default(0)
+  referralCableBonus   Float  @default(15)
+  referralExamBonus    Float  @default(20)
+  referralMeterBonus   Float  @default(10)
+  referralBonusPercent Float  @default(0)
+  walletToWalletFee    Float  @default(50)
+  siteColor            String @default("#0bda0f")
+  loginDesign          String @default("5")
+  homeDesign           String @default("1")
+  notificationStatus   String @default("Off")
+  accountName          String @default("")
+  accountNo            String @default("")
+  bankName             String @default("")
+   electricityCharges   String @default("0")
+   cableFee             String @default("0")
+   electricityFee       String @default("0")
+  airtimeMin           String @default("50")
+  airtimeMax           String @default("50000")
+  kycOption            String @default("both")
+  kycBvnCharges        String @default("10")
+  kycNinCharges        String @default("70")
+  kycShouldVerify      String @default("yes")
+  kycShouldEnable      String @default("yes")
+  smileDiscount        String @default("0")
+  airtimedaily         String @default("5000")
+  sitedesc             String @default("Nigeria's most reliable VTU platform. Buy airtime, data, pay bills and more.")
+  address              String @default("")
+  faviconUrl           String @default("")
+  logoUrl              String @default("")
+  sitetitle            String @default("")
+  atcEnabled           String @default("yes")
+  atcRate              String @default("80")
+  atcMtnNumber         String @default("")
+  atcAirtelNumber      String @default("")
+  atcMinAmount         String @default("100")
+   atcMaxAmount         String @default("50000")
+    walletFundingFeePercent String @default("0")
+    walletFundingFeeCap     String @default("50")
+    fundWalletDefaultTab    String @default("manual")
+    fundWalletPaystack      String @default("yes")
+    fundWalletManual        String @default("yes")
+
+  @@map("site_settings")
+}
+
+model AirtimeToCash {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  network        String
+  senderNumber   String
+  amount         Float
+  rate           Float
+  receiveAmount  Float
+  payoutMethod   String
+  bankName       String?
+  bankAccount    String?
+  bankAccountName String?
+  status         String   @default("pending")
+  adminNote      String?
+  ref            String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("airtime_to_cash")
+}
+
+model Beneficiary {
+  id     Int     @id @default(autoincrement())
+  userId Int
+  name   String?
+  phone  String?
+  user   User    @relation(fields: [userId], references: [id])
+
+  @@map("beneficiaries")
+}
+
+model Blacklist {
+  id        Int       @id @default(autoincrement())
+  phone     String    @unique
+  dateAdded DateTime? @default(now())
+
+  @@map("blacklist")
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  msgFor     Int
+  subject    String
+  message    String
+  status     Int      @default(0)
+  uploadPath String?
+  createdAt  DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model Contact {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @default(0)
+  name      String
+  message   String
+  createdAt DateTime @default(now())
+  email     String
+  isRead    Boolean  @default(false)
+  phone     String
+
+  @@map("contacts")
+}
+
+model Issue {
+  id        Int      @id @default(autoincrement())
+  userId    String?
+  ref       String?
+  query     String?
+  userEmail String?
+  userRead  Boolean  @default(false)
+  adminRead Boolean  @default(false)
+  createdAt DateTime @default(now())
+  replies   Reply[]
+
+  @@map("issues")
+}
+
+model Reply {
+  id        Int      @id @default(autoincrement())
+  issueId   Int?
+  replyBy   String?
+  reply     String?
+  img       String?
+  createdAt DateTime @default(now())
+  issue     Issue?   @relation(fields: [issueId], references: [id])
+
+  @@map("replies")
+}
+
+model ManualFund {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  amount    Float
+  account   String
+  method    String
+  status    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("manual_funds")
+}
+
+model MonnifyAccount {
+  id               Int    @id @default(autoincrement())
+  accountReference String
+  email            String
+
+  @@map("monnify_accounts")
+}
+
+model CACRequest {
+  id            Int       @id @default(autoincrement())
+  certType      String
+  email         String
+  compName      String
+  altCompName   String?
+  shareCap      Float
+  compAddr      String
+  resAddr       String
+  busNature     String
+  dirIdCard     String?
+  passportPhoto String?
+  phoneNum      String
+  status        String?
+  userId        Int?
+  submitDate    DateTime?
+  note          String    @default("Your CAC certificate will be ready in 3 to 14 days.")
+  user          User?     @relation(fields: [userId], references: [id])
+
+  @@map("cac_requests")
+}
+
+model Admin {
+  id              Int              @id @default(autoincrement())
+  name            String
+  email           String           @unique
+  phone           String?
+  password        String
+  role            String           @default("admin") // "super_admin" or "admin"
+  permissions     Json             @default("[]")    // Array of permission strings
+  status          Int              @default(1)       // 0=inactive, 1=active
+  otpCode         String?
+  otpExpiresAt    DateTime?
+  otpAttempts     Int              @default(0)
+  lastLoginAt     DateTime?
+  sessionTimeout  Int              @default(30)      // minutes
+  createdBy       Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  sessions        AdminSession[]
+  auditLogs       AdminAuditLog[]
+
+  @@map("admins")
+}
+
+model AdminSession {
+  id             Int      @id @default(autoincrement())
+  adminId        Int
+  refreshToken   String   @unique
+  fingerprint    String   // hash of IP + User-Agent
+  ip             String
+  userAgent      String
+  isCurrent      Boolean  @default(false)
+  lastActivityAt DateTime @default(now())
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  admin          Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@map("admin_sessions")
+}
+
+model AdminAuditLog {
+  id        Int      @id @default(autoincrement())
+  adminId   Int
+  action    String   // "login", "logout", "create_admin", "update_admin", etc.
+  details   String?  // JSON string with additional details
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, createdAt(sort: Desc)])
+  @@map("admin_audit_logs")
+}
+
+model EmailOtp {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  email     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, code])
+  @@map("email_otps")
+}
+
+model RecognizedDevice {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  deviceFingerprint String
+  label             String?
+  lastSeen          DateTime @default(now())
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceFingerprint])
+  @@map("recognized_devices")
+}
+
+model UserLogin {
+  id     Int    @id @default(autoincrement())
+  userId Int
+  token  String
+
+  @@map("user_logins")
+}
+
+model UserVisit {
+  id        Int    @id @default(autoincrement())
+  userId    Int
+  state     String
+  visitTime String
+
+  @@map("user_visits")
+}
+
+model UpgradeRequest {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  status    Int      @default(0)
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("upgrade_requests")
+}
+
+model ApiProvider {
+  id        Int               @id @default(autoincrement())
+  name      String
+  baseUrl   String            @default("")
+  apiKey    String            @default("")
+  apiSecret String            @default("")
+  authType  String            @default("token")
+  notes     String            @default("")
+  createdAt DateTime          @default(now())
+  services  ProviderService[]
+
+  @@map("api_providers")
+}
+
+model ProviderService {
+  id          Int                @id @default(autoincrement())
+  providerId  Int
+  serviceKey  String
+  networkCode String             @default("")
+  serviceUrl  String             @default("")
+  isActive    Boolean            @default(false)
+  planCodes   ProviderPlanCode[]
+  provider    ApiProvider        @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, serviceKey])
+  @@map("provider_services")
+}
+
+model ProviderPlanCode {
+  id                Int             @id @default(autoincrement())
+  providerServiceId Int
+  planId            Int
+  providerCode      String
+  buyingPrice       Float           @default(0)
+  service           ProviderService @relation(fields: [providerServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([providerServiceId, planId])
+  @@map("provider_plan_codes")
+}
+
+model Banner {
+  id        Int      @id @default(autoincrement())
+  title     String   @default("")
+  imageUrl  String
+  link      String   @default("")
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("banners")
+}
+
+model ReferralLog {
+  id         Int      @id @default(autoincrement())
+  referrerId Int
+  refereeId  Int
+  type       String   @default("signup")
+  amount     Float    @default(0)
+  service    String   @default("")
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@map("referral_logs")
+}

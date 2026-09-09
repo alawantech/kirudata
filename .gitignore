@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables — NEVER commit secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.vercel
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+frontend/next-env.d.ts
+
+# Prisma generated
+backend/node_modules/.prisma/
+
+# Migration backups (contain secrets, DB dumps, SSL certs — NEVER commit)
+migration/
+backend/fix-paystack-keys.js
