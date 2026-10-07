@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AdminProvider, useAdmin } from "@/context/AdminContext";
@@ -72,6 +72,7 @@ function AdminLayoutInner({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const navRef = useRef(null);
 
   // Redirect to login if not authenticated (must be in useEffect, not render)
   useEffect(() => {
@@ -79,6 +80,17 @@ function AdminLayoutInner({ children }) {
       router.replace("/admin/login");
     }
   }, [admin, loading, pathname, router]);
+
+  // If the drawer was left open and the viewport reaches desktop width,
+  // close it so the overlay never lingers over the content and blocks scrolling
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) setOpen(false);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   if (loading) {
     return (
@@ -129,6 +141,7 @@ function AdminLayoutInner({ children }) {
       {open && (
         <div
           onClick={() => setOpen(false)}
+          onWheel={() => setOpen(false)}
           style={{
             position: "fixed",
             inset: 0,
@@ -140,6 +153,19 @@ function AdminLayoutInner({ children }) {
 
       {/* Sidebar */}
       <aside
+        onWheel={(e) => {
+          const nav = navRef.current;
+          if (!nav) return;
+          const target = e.target;
+          if (target instanceof Element && nav.contains(target)) return;
+          const dy =
+            e.deltaMode === 1
+              ? e.deltaY * 24
+              : e.deltaMode === 2
+                ? e.deltaY * nav.clientHeight
+                : e.deltaY;
+          nav.scrollTop += dy;
+        }}
         style={{
           width: 260,
           background: "#0f172a",
@@ -152,6 +178,7 @@ function AdminLayoutInner({ children }) {
           zIndex: 50,
           transform: open ? "translateX(0)" : "translateX(-100%)",
           transition: "transform .25s",
+          overflow: "hidden",
         }}
       >
         <div
@@ -167,7 +194,17 @@ function AdminLayoutInner({ children }) {
             />
           </div>
         </div>
-        <nav style={{ flex: 1, padding: "1rem .75rem", overflowY: "auto" }}>
+        <nav
+          ref={navRef}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            padding: "1rem .75rem",
+            overflowY: "auto",
+            overscrollBehavior: "contain",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           {(() => {
             const CONFIG_PERMS = [
               "networks_manage", "airtime_discounts_manage", "data_plans_manage",
@@ -326,7 +363,15 @@ function AdminLayoutInner({ children }) {
             <span style={{ fontSize: ".75rem", color: "#64748b" }}>v2</span>
           </div>
         </header>
-        <main style={{ flex: 1, padding: "1.5rem", overflowY: "auto" }}>
+        <main
+          style={{
+            flex: 1,
+            minHeight: 0,
+            padding: "1.5rem",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           {children}
         </main>
       </div>
