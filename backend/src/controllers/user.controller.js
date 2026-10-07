@@ -191,20 +191,21 @@ async function getVirtualAccounts(req, res) {
     // Detect if DVA creation previously failed (customer exists but no accounts)
     const dvaFailed = user.paystackCustomerCode && !user.paystackWemaAccount && !user.paystackTitanAccount;
 
-    // Lazy generation: if Paystack accounts are missing, create them now (fire-and-forget)
+    // Lazy generation: if Paystack accounts are missing, create them now
+    // (fire-and-forget). Even when a customer code exists (dvaFailed case) we must
+    // still call ensureAllAccounts — it self-heals stale/foreign codes and the
+    // frontend polls `pending` until the accounts appear.
     let pendingAccounts = false;
     if (!user.paystackCustomerCode || !user.paystackWemaAccount || !user.paystackTitanAccount) {
-      if (!dvaFailed) {
-        const paystackService = require("../services/paystack.service");
-        paystackService.ensureAllAccounts({
-          userId: user.id,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          phone: user.phone || "",
-          email: user.email,
-        });
-        pendingAccounts = true;
-      }
+      const paystackService = require("../services/paystack.service");
+      paystackService.ensureAllAccounts({
+        userId: user.id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        phone: user.phone || "",
+        email: user.email,
+      });
+      pendingAccounts = true;
     }
 
     const localAccounts = [];

@@ -65,24 +65,50 @@ async function getCustomerByEmail(email) {
   return customers.length > 0 ? customers[0] : null;
 }
 
+// Detect Paystack "Customer not found" — happens when the stored customer code
+// is stale/foreign (e.g. came from another platform's Paystack account dump).
+function isCustomerNotFound(err) {
+  const data = err?.response?.data;
+  if (data?.code === "customer_not_found") return true;
+  return /customer not found/i.test(String(data?.message || err?.message || ""));
+}
+
+// Self-heal: discard the stale/foreign customer code, recreate the customer
+// under THIS Paystack account, and return the new valid code.
+async function healCustomer({ userId, email, firstname, lastname, phone }) {
+  const customer = await createCustomer({
+    email,
+    firstName: firstname,
+    lastName: lastname,
+    phone: phone || "",
+  });
+  await prisma.user.update({
+    where: { id: userId },
+    data: { paystackCustomerCode: customer.customer_code },
+  });
+  console.log(
+    `[Paystack] Healed stale customer code for user ${userId} -> ${customer.customer_code}`
+  );
+  return customer.customer_code;
+}
+
 async function ensureAllAccounts({ userId, firstname, lastname, phone, email }) {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return;
     if (user.paystackCustomerCode && user.paystackWemaAccount && user.paystackTitanAccount) return;
 
-    // If customer exists but DVA creation failed previously, throttle retries
-    // instead of blocking forever — retry at most once every 2 minutes per user
-    // so background checks (getMe/login) can recover automatically.
+    // Throttle retries (15s per user) so background checks (getMe, virtual-accounts
+    // polling) can recover automatically without hammering Paystack or racing
+    // duplicate runs when multiple endpoints fire at once.
     if (user.paystackCustomerCode && !user.paystackWemaAccount && !user.paystackTitanAccount) {
       const retryAt = (global.__paystackDvaRetry = global.__paystackDvaRetry || {});
       const last = retryAt[userId] || 0;
-      if (Date.now() - last < 2 * 60 * 1000) return;
+      if (Date.now() - last < 15 * 1000) return;
       retryAt[userId] = Date.now();
     }
 
     let customerCode = user.paystackCustomerCode;
-    let paystackCustomerId = null;
 
     if (!customerCode) {
       const customer = await createCustomer({
@@ -92,7 +118,6 @@ async function ensureAllAccounts({ userId, firstname, lastname, phone, email }) 
         phone: phone || "",
       });
       customerCode = customer.customer_code;
-      paystackCustomerId = customer.id;
       await prisma.user.update({
         where: { id: userId },
         data: { paystackCustomerCode: customerCode },
@@ -101,29 +126,52 @@ async function ensureAllAccounts({ userId, firstname, lastname, phone, email }) 
 
     if (!user.paystackWemaAccount) {
       try {
-        const dva = await createDva(customerCode, "wema-bank");
+        let dva;
+        try {
+          dva = await createDva(customerCode, "wema-bank");
+        } catch (err) {
+          if (!isCustomerNotFound(err)) throw err;
+          customerCode = await healCustomer({ userId, email, firstname, lastname, phone });
+          dva = await createDva(customerCode, "wema-bank");
+        }
         await prisma.user.update({
           where: { id: userId },
           data: { paystackWemaAccount: dva.account_number },
         });
       } catch (err) {
-        console.error("[Paystack] Failed to create Wema DVA:", err.message);
+        console.error(
+          "[Paystack] Failed to create Wema DVA:",
+          err?.response?.data || err.message
+        );
       }
     }
 
     if (!user.paystackTitanAccount) {
       try {
-        const dva = await createDva(customerCode, "titan-paystack");
+        let dva;
+        try {
+          dva = await createDva(customerCode, "titan-paystack");
+        } catch (err) {
+          if (!isCustomerNotFound(err)) throw err;
+          customerCode = await healCustomer({ userId, email, firstname, lastname, phone });
+          dva = await createDva(customerCode, "titan-paystack");
+        }
         await prisma.user.update({
           where: { id: userId },
           data: { paystackTitanAccount: dva.account_number },
         });
       } catch (err) {
-        console.error("[Paystack] Failed to create Titan DVA:", err.message);
+        console.error(
+          "[Paystack] Failed to create Titan DVA:",
+          err?.response?.data || err.message
+        );
       }
     }
   } catch (err) {
-    console.error("[Paystack] ensureAllAccounts error:", err.message);
+    console.error(
+      "[Paystack] ensureAllAccounts error:",
+      err?.response?.data || err.message
+    );
   }
 }
 

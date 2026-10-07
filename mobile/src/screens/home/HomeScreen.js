@@ -212,6 +212,8 @@ export default function HomeScreen({ navigation }) {
   const pulse = useRef(new Animated.Value(1)).current;
   const bannerRef = useRef(null);
   const bannerTimerRef = useRef(null);
+  const accPollTimerRef = useRef(null);
+  const accPollCountRef = useRef(0);
 
   // Load logo — read from cache first, then refresh from server
   useFocusEffect(
@@ -271,8 +273,17 @@ export default function HomeScreen({ navigation }) {
       ]);
       setWallet(walletRes.data.data.wallet ?? 0);
       setRecentTx(txRes.data.data?.transactions || []);
-      setAccounts(accRes.data.data?.accounts || []);
+      const accData = accRes.data.data || {};
+      setAccounts(accData.accounts || []);
       setBanners(bannerRes.data.data?.banners || []);
+      // Auto-refetch while dedicated accounts are still being generated
+      if (accData.pending && accPollCountRef.current < 8) {
+        accPollCountRef.current += 1;
+        clearTimeout(accPollTimerRef.current);
+        accPollTimerRef.current = setTimeout(fetchDashboard, 3000);
+      } else if (!accData.pending) {
+        accPollCountRef.current = 0;
+      }
     } catch (err) {
       Toast.show({ type: "error", text1: "Failed to load dashboard" });
     } finally {
@@ -284,6 +295,7 @@ export default function HomeScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       fetchDashboard();
+      return () => clearTimeout(accPollTimerRef.current);
     }, []),
   );
 

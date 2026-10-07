@@ -39,6 +39,7 @@ export default function FundWalletScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [needsKyc, setNeedsKyc] = useState(false);
   const [kycPending, setKycPending] = useState(false);
+  const [accountsPending, setAccountsPending] = useState(false);
   const [kycType, setKycType] = useState("bvn"); // "bvn" or "nin"
   const [kycValue, setKycValue] = useState("");
   const [kycDob, setKycDob] = useState("");
@@ -57,6 +58,7 @@ export default function FundWalletScreen({ navigation }) {
           .catch(() => ({ data: { data: { settings: {} } } })),
       ]);
       setAccounts(accRes.data.data?.accounts || []);
+      setAccountsPending(!!accRes.data.data?.pending);
       setNeedsKyc(accRes.data.data?.needsKyc || false);
       setKycPending(accRes.data.data?.kycPending || false);
       setBalance(walletRes.data.data?.wallet);
@@ -81,6 +83,22 @@ export default function FundWalletScreen({ navigation }) {
       fetchData();
     }, []),
   );
+
+  // Keep polling while dedicated accounts are being generated in the background
+  // so the numbers appear automatically without a manual refresh.
+  useEffect(() => {
+    if (!accountsPending) return;
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts += 1;
+      if (attempts > 10) {
+        clearInterval(interval);
+        return;
+      }
+      fetchData();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [accountsPending]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -428,14 +446,35 @@ export default function FundWalletScreen({ navigation }) {
                 ) : (
                   <View style={styles.empty}>
                     <Ionicons
-                      name="bank-outline"
+                      name={accountsPending ? "time-outline" : "bank-outline"}
                       size={48}
                       color={COLORS.border}
                     />
-                    <Text style={styles.emptyTitle}>No account assigned yet</Text>
-                    <Text style={styles.emptyDesc}>
-                      Contact support if this persists
-                    </Text>
+                    {accountsPending ? (
+                      <>
+                        <ActivityIndicator
+                          size="small"
+                          color={COLORS.primary}
+                          style={{ marginTop: 12 }}
+                        />
+                        <Text style={styles.emptyTitle}>
+                          Creating your account numbers…
+                        </Text>
+                        <Text style={styles.emptyDesc}>
+                          Your dedicated account numbers will appear here
+                          shortly
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.emptyTitle}>
+                          No account assigned yet
+                        </Text>
+                        <Text style={styles.emptyDesc}>
+                          Contact support if this persists
+                        </Text>
+                      </>
+                    )}
                   </View>
                 )
               ) : (
