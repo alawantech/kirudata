@@ -71,9 +71,14 @@ async function ensureAllAccounts({ userId, firstname, lastname, phone, email }) 
     if (!user) return;
     if (user.paystackCustomerCode && user.paystackWemaAccount && user.paystackTitanAccount) return;
 
-    // If customer already exists but DVA creation failed previously, don't retry endlessly
+    // If customer exists but DVA creation failed previously, throttle retries
+    // instead of blocking forever — retry at most once every 2 minutes per user
+    // so background checks (getMe/login) can recover automatically.
     if (user.paystackCustomerCode && !user.paystackWemaAccount && !user.paystackTitanAccount) {
-      return;
+      const retryAt = (global.__paystackDvaRetry = global.__paystackDvaRetry || {});
+      const last = retryAt[userId] || 0;
+      if (Date.now() - last < 2 * 60 * 1000) return;
+      retryAt[userId] = Date.now();
     }
 
     let customerCode = user.paystackCustomerCode;
