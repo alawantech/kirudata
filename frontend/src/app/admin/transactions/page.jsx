@@ -389,41 +389,96 @@ export default function AdminTransactionsPage() {
                               </div>
                             )}
                             {t.apiResponseLog && (
-                              <div style={{ marginBottom: ".4rem" }}>
-                                <span
-                                  style={{ fontWeight: 700, color: "#dc2626" }}
-                                >
-                                  API Error:{" "}
-                                </span>
-                                <code
-                                  style={{
-                                    color: "#dc2626",
-                                    fontFamily: "monospace",
-                                    fontSize: ".78rem",
-                                    wordBreak: "break-all",
-                                  }}
-                                >
-                                  {t.apiResponseLog}
-                                </code>
+                              <div style={{ marginBottom: ".35rem" }}>
+                                {(() => {
+                                  let parsed = null;
+                                  try {
+                                    parsed =
+                                      typeof t.apiResponseLog === "string"
+                                        ? JSON.parse(t.apiResponseLog)
+                                        : t.apiResponseLog;
+                                  } catch {
+                                    parsed = null;
+                                  }
+                                  const logOk =
+                                    parsed &&
+                                    String(parsed.status || "").toLowerCase() ===
+                                      "success";
+                                  const txStatus = Number(t.status);
+                                  const ok = parsed ? logOk : txStatus === 1;
+                                  const label = ok
+                                    ? "Successful"
+                                    : txStatus === 2
+                                      ? "Processing"
+                                      : "Failed";
+                                  const color = ok
+                                    ? "#16a34a"
+                                    : txStatus === 2
+                                      ? "#d97706"
+                                      : "#dc2626";
+                                  const providerMsg =
+                                    (parsed &&
+                                      (parsed.message || parsed.msg)) ||
+                                    t.apiResponse ||
+                                    null;
+                                  return (
+                                    <>
+                                      <span
+                                        style={{ fontWeight: 700, color }}
+                                      >
+                                        Result:{" "}
+                                      </span>
+                                      <span
+                                        style={{ fontWeight: 700, color }}
+                                      >
+                                        {label}
+                                      </span>
+                                      {providerMsg && (
+                                        <span style={{ color: "#0f172a" }}>
+                                          {" — "}
+                                          {providerMsg}
+                                        </span>
+                                      )}
+                                      <details
+                                        style={{ marginTop: ".25rem" }}
+                                      >
+                                        <summary
+                                          style={{
+                                            cursor: "pointer",
+                                            color: "#94a3b8",
+                                            fontSize: ".75rem",
+                                          }}
+                                        >
+                                          View technical details
+                                        </summary>
+                                        <code
+                                          style={{
+                                            display: "block",
+                                            marginTop: ".25rem",
+                                            color: "#64748b",
+                                            fontFamily: "monospace",
+                                            fontSize: ".75rem",
+                                            wordBreak: "break-all",
+                                          }}
+                                        >
+                                          {t.apiResponseLog}
+                                        </code>
+                                      </details>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             )}
-                            {t.apiResponse && (
+                            {!t.apiResponseLog && t.apiResponse && (
                               <div>
                                 <span
                                   style={{ fontWeight: 700, color: "#475569" }}
                                 >
-                                  API Response:{" "}
+                                  Result:{" "}
                                 </span>
-                                <code
-                                  style={{
-                                    color: "#64748b",
-                                    fontFamily: "monospace",
-                                    fontSize: ".75rem",
-                                    wordBreak: "break-all",
-                                  }}
-                                >
+                                <span style={{ color: "#0f172a" }}>
                                   {t.apiResponse}
-                                </code>
+                                </span>
                               </div>
                             )}
                           </td>
