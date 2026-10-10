@@ -17,13 +17,15 @@ const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const BG_TIME_KEY = "bg_timestamp";
 const LAST_USER_KEY = "last_user";
 const CACHED_USER_KEY = "cached_user";
-const BOOT_TIMEOUT_MS = 12000;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUser, setLastUser] = useState(null);
+  // True only after a FRESH login/register/OTP in this app run. A cold start
+  // never sets it — that is what forces the Welcome Back re-auth gate.
+  const [sessionStarted, setSessionStarted] = useState(false);
   const appState = useRef(AppState.currentState);
 
   const _cacheUser = async (u) => {
@@ -40,6 +42,7 @@ export function AuthProvider({ children }) {
     } catch {}
     setToken(null);
     setUser(null);
+    setSessionStarted(false);
   };
 
   useEffect(() => {
@@ -51,16 +54,19 @@ export function AuthProvider({ children }) {
           AsyncStorage.getItem(CACHED_USER_KEY),
         ]);
 
+        let parsed = null;
         if (stored) {
-          const parsed = JSON.parse(stored);
+          try {
+            parsed = JSON.parse(stored);
+          } catch {}
           const nameIsEmail =
+            parsed &&
             parsed.name &&
             (parsed.name.includes("@") || parsed.name === parsed.identifier);
-          const missingPhone = parsed.phone === undefined;
-          if (nameIsEmail || missingPhone) {
+          const missingPhone = parsed && parsed.phone === undefined;
+          if (!parsed || nameIsEmail || missingPhone) {
             await AsyncStorage.removeItem(LAST_USER_KEY);
-          } else {
-            setLastUser(parsed);
+            parsed = null;
           }
         }
 
@@ -73,42 +79,38 @@ export function AuthProvider({ children }) {
 
         if (existingToken) {
           setToken(existingToken);
-
-          if (restored) {
-            // Fast path: open instantly with the cached profile, then
-            // validate the token in the background.
-            setUser(restored);
-            setLoading(false);
-            client
-              .get("/auth/me", { timeout: BOOT_TIMEOUT_MS })
-              .then(async (me) => {
-                const fresh = me.data.data.user;
-                setUser(fresh);
-                await _cacheUser(fresh);
-              })
-              .catch(async (err) => {
-                const status = err?.response?.status;
-                if (status === 401 || status === 403) await _endSession();
-              });
-          } else {
-            try {
-              const me = await client.get("/auth/me", {
-                timeout: BOOT_TIMEOUT_MS,
-              });
-              const fresh = me.data.data.user;
-              setUser(fresh);
-              await _cacheUser(fresh);
-            } catch (err) {
-              // Only an auth failure logs the user out. Network/timeout
-              // errors must NOT delete the token — that used to force
-              // returning users back into onboarding.
-              const status = err?.response?.status;
-              if (status === 401 || status === 403) await _endSession();
-            }
-          }
+          // Restore the cached profile instantly — no network on cold start.
+          // The Welcome Back gate means the dashboard is never auto-entered.
+          if (restored) setUser(restored);
         } else if (restored) {
-          // Cached profile but no token — drop the stale profile.
+          // No token — the cached profile is useless.
           await AsyncStorage.removeItem(CACHED_USER_KEY);
+          restored = null;
+        }
+
+        // A known account must always have a lastUser record so cold start
+        // lands on Welcome Back (never onboarding). Synthesise it from the
+        // cached profile if the stored one was dropped/missing.
+        if (parsed) {
+          setLastUser(parsed);
+        } else if (restored) {
+          const name =
+            [restored.firstname, restored.lastname].filter(Boolean).join(" ") ||
+            restored.name ||
+            restored.fullname ||
+            "";
+          const identifier = restored.email || restored.phone || "";
+          const okName =
+            name && !name.includes("@") && name !== identifier;
+          if (okName && identifier) {
+            const userInfo = {
+              name,
+              identifier,
+              phone: restored.phone ?? "",
+            };
+            await AsyncStorage.setItem(LAST_USER_KEY, JSON.stringify(userInfo));
+            setLastUser(userInfo);
+          }
         }
       } catch {}
 
@@ -151,6 +153,7 @@ export function AuthProvider({ children }) {
     await SecureStore.deleteItemAsync("auth_token");
     setToken(null);
     setUser(null);
+    setSessionStarted(false);
     // LAST_USER_KEY is intentionally kept: a locked/timed-out session must
     // come back to the Welcome Back screen, never the onboarding carousel.
   };
@@ -184,6 +187,7 @@ export function AuthProvider({ children }) {
     setLastUser(userInfo);
     setToken(t);
     setUser(u);
+    setSessionStarted(true);
     await _cacheUser(u);
     return u;
   };
@@ -199,6 +203,7 @@ export function AuthProvider({ children }) {
     const me = await client.get("/auth/me");
     const u = me.data.data.user;
     setUser(u);
+    setSessionStarted(true);
     const name =
       [u.firstname, u.lastname].filter(Boolean).join(" ") ||
       u.name ||
@@ -230,6 +235,7 @@ export function AuthProvider({ children }) {
 
   const completeOtpLogin = async (userData) => {
     setUser(userData);
+    setSessionStarted(true);
     await _cacheUser(userData);
     // Update lastUser with the OTP-verified user so welcome back shows correct account
     try {
@@ -252,6 +258,7 @@ export function AuthProvider({ children }) {
         token,
         loading,
         lastUser,
+        sessionStarted,
         login,
         register,
         logout,

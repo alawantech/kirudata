@@ -167,9 +167,15 @@ function LoadingView() {
 }
 
 export default function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, sessionStarted, lastUser } = useAuth();
 
   if (loading) return <LoadingView />;
+
+  // Cold-start re-auth gate: a fully closed app always comes back to the
+  // Welcome Back screen for a known account — even when the session/token is
+  // still valid. Only a FRESH login/register/OTP (sessionStarted) enters the
+  // dashboard directly.
+  if (user && lastUser && !sessionStarted) return <AuthStack />;
 
   return user ? <AppStack /> : <AuthStack />;
 }
