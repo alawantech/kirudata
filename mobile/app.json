@@ -27,7 +27,10 @@
         "monochromeImage": "./assets/adaptive-icon.png"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": [],
+      "permissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ],
       "softwareKeyboardSoftInputMode": "adjustResize"
     },
     "privacyPolicy": "https://kirudata.com/privacy",
@@ -46,8 +49,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "TBD"
+        "projectId": "ff5e6b07-f55a-4814-9db7-1446b013d7d6"
       }
-    }
+    },
+    "owner": "kiru-data"
   }
 }

@@ -16,6 +16,8 @@ const AuthContext = createContext(null);
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const BG_TIME_KEY = "bg_timestamp";
 const LAST_USER_KEY = "last_user";
+const CACHED_USER_KEY = "cached_user";
+const BOOT_TIMEOUT_MS = 12000;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -24,10 +26,31 @@ export function AuthProvider({ children }) {
   const [lastUser, setLastUser] = useState(null);
   const appState = useRef(AppState.currentState);
 
+  const _cacheUser = async (u) => {
+    try {
+      await AsyncStorage.setItem(CACHED_USER_KEY, JSON.stringify(u));
+    } catch {}
+  };
+
+  // Token is dead (401/403) — drop it without another network call.
+  const _endSession = async () => {
+    try {
+      await SecureStore.deleteItemAsync("auth_token");
+      await AsyncStorage.removeItem(CACHED_USER_KEY);
+    } catch {}
+    setToken(null);
+    setUser(null);
+  };
+
   useEffect(() => {
     (async () => {
       try {
-        const stored = await AsyncStorage.getItem(LAST_USER_KEY);
+        const [stored, existingToken, cachedProfile] = await Promise.all([
+          AsyncStorage.getItem(LAST_USER_KEY),
+          SecureStore.getItemAsync("auth_token"),
+          AsyncStorage.getItem(CACHED_USER_KEY),
+        ]);
+
         if (stored) {
           const parsed = JSON.parse(stored);
           const nameIsEmail =
@@ -40,19 +63,52 @@ export function AuthProvider({ children }) {
             setLastUser(parsed);
           }
         }
-      } catch {}
 
-      try {
-        const existingToken = await SecureStore.getItemAsync("auth_token");
+        let restored = null;
+        if (cachedProfile) {
+          try {
+            restored = JSON.parse(cachedProfile);
+          } catch {}
+        }
+
         if (existingToken) {
           setToken(existingToken);
-          try {
-            const me = await client.get("/auth/me");
-            setUser(me.data.data.user);
-          } catch {
-            await SecureStore.deleteItemAsync("auth_token");
-            setToken(null);
+
+          if (restored) {
+            // Fast path: open instantly with the cached profile, then
+            // validate the token in the background.
+            setUser(restored);
+            setLoading(false);
+            client
+              .get("/auth/me", { timeout: BOOT_TIMEOUT_MS })
+              .then(async (me) => {
+                const fresh = me.data.data.user;
+                setUser(fresh);
+                await _cacheUser(fresh);
+              })
+              .catch(async (err) => {
+                const status = err?.response?.status;
+                if (status === 401 || status === 403) await _endSession();
+              });
+          } else {
+            try {
+              const me = await client.get("/auth/me", {
+                timeout: BOOT_TIMEOUT_MS,
+              });
+              const fresh = me.data.data.user;
+              setUser(fresh);
+              await _cacheUser(fresh);
+            } catch (err) {
+              // Only an auth failure logs the user out. Network/timeout
+              // errors must NOT delete the token — that used to force
+              // returning users back into onboarding.
+              const status = err?.response?.status;
+              if (status === 401 || status === 403) await _endSession();
+            }
           }
+        } else if (restored) {
+          // Cached profile but no token — drop the stale profile.
+          await AsyncStorage.removeItem(CACHED_USER_KEY);
         }
       } catch {}
 
@@ -91,15 +147,16 @@ export function AuthProvider({ children }) {
     try {
       await client.post("/auth/logout");
     } catch {}
-    await AsyncStorage.multiRemove([BG_TIME_KEY, LAST_USER_KEY]);
+    await AsyncStorage.multiRemove([BG_TIME_KEY, CACHED_USER_KEY]);
     await SecureStore.deleteItemAsync("auth_token");
     setToken(null);
     setUser(null);
-    setLastUser(null);
+    // LAST_USER_KEY is intentionally kept: a locked/timed-out session must
+    // come back to the Welcome Back screen, never the onboarding carousel.
   };
 
   const clearLastUser = async () => {
-    await AsyncStorage.removeItem(LAST_USER_KEY);
+    await AsyncStorage.multiRemove([LAST_USER_KEY, CACHED_USER_KEY]);
     setLastUser(null);
   };
 
@@ -127,6 +184,7 @@ export function AuthProvider({ children }) {
     setLastUser(userInfo);
     setToken(t);
     setUser(u);
+    await _cacheUser(u);
     return u;
   };
 
@@ -155,6 +213,7 @@ export function AuthProvider({ children }) {
     };
     await AsyncStorage.setItem(LAST_USER_KEY, JSON.stringify(userInfo));
     setLastUser(userInfo);
+    await _cacheUser(u);
     return userId;
   };
 
@@ -165,11 +224,13 @@ export function AuthProvider({ children }) {
   const refreshUser = async () => {
     const r = await client.get("/auth/me");
     setUser(r.data.data.user);
+    await _cacheUser(r.data.data.user);
     return r.data.data.user;
   };
 
   const completeOtpLogin = async (userData) => {
     setUser(userData);
+    await _cacheUser(userData);
     // Update lastUser with the OTP-verified user so welcome back shows correct account
     try {
       const name =

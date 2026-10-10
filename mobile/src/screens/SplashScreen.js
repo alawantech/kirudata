@@ -7,11 +7,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SPLASH_FONTS as F } from "../constants/splashTheme";
 import { COLORS } from "../constants/theme";
 import { API_BASE } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 
 const { width: W } = Dimensions.get("window");
 const BAR_WIDTH = 168;
 const BAR_HEIGHT = 4;
-const SPLASH_DURATION = 2500;
+const SPLASH_DURATION = 1800;
 const LOGO_CACHE_KEY = "cached_logo_url";
 const LOCAL_LOGO = require("../../assets/logo-kiru.png");
 const LOGO_W = 250;
@@ -25,6 +26,7 @@ export default function SplashScreen({ navigation }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoFailed, setLogoFailed] = useState(false);
   const insets = useSafeAreaInsets();
+  const { lastUser } = useAuth();
 
   const [fontsLoaded] = useFonts({
     Poppins_700Bold,
@@ -65,7 +67,7 @@ export default function SplashScreen({ navigation }) {
         duration: 280,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
-      }).start(() => navigation.replace("Welcome"));
+      }).start(() => navigation.replace(lastUser ? "Login" : "Welcome"));
     }, SPLASH_DURATION);
     return () => clearTimeout(timer);
   }, []);

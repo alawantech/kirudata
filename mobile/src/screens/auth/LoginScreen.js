@@ -451,33 +451,59 @@ export default function LoginScreen({ navigation }) {
       <StatusBar barStyle="light-content" />
 
       {isReturning ? (
-        /* ─── Welcome-back: full gradient + floating card ──────────── */
+        /* ─── Welcome-back: centered layout + card ─────────────────── */
         <LinearGradient
           colors={["#0f172a", "#1e3a8a", "#4f46e5"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.banner, { paddingTop: insets.top + 10, height: null, flex: 1 }]}
+          style={{
+            flex: 1,
+            paddingTop: insets.top + 10,
+            paddingHorizontal: 24,
+            paddingBottom: insets.bottom + 16,
+            justifyContent: "center",
+            alignItems: "center",
+            overflow: "hidden",
+            position: "relative",
+          }}
         >
           <View style={styles.circle1} />
           <View style={styles.circle2} />
           <View style={styles.circle3} />
 
-          <Animated.View style={{ alignItems: "center", opacity: fadeAnim, transform: [{ scale: logoScale }], flex: 1, justifyContent: "center", paddingBottom: 120 }}>
-            <View style={styles.wbAvatar}>
-              <Text style={styles.wbAvatarText}>{(firstName || "U").charAt(0).toUpperCase()}</Text>
-            </View>
-            <Text style={styles.wbTitle}>Welcome Back</Text>
-            <Text style={styles.wbAppName}>KIRU</Text>
-          </Animated.View>
-
-          {/* Floating card at bottom */}
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+            style={{ flex: 1, width: "100%" }}
             keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
           >
-            <View style={styles.wbCardContainer}>
+            <ScrollView
+              style={{ flex: 1 }}
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                flexGrow: 1,
+                justifyContent: "center",
+                paddingVertical: 24,
+              }}
+            >
+              <Animated.View
+                style={{
+                  alignItems: "center",
+                  opacity: fadeAnim,
+                  transform: [{ scale: logoScale }],
+                  marginBottom: 20,
+                }}
+              >
+                <View style={styles.wbAvatar}>
+                  <Text style={styles.wbAvatarText}>{(firstName || "U").charAt(0).toUpperCase()}</Text>
+                </View>
+              </Animated.View>
+
               <View style={styles.wbCard}>
+                <Text style={styles.wbCardTitle}>Welcome Back</Text>
+                {firstName ? <Text style={styles.wbCardName}>{firstName}</Text> : null}
+
                 {/* Fingerprint */}
                 {canShowBiometric ? (
                   <TouchableOpacity onPress={handleBiometricLogin} style={styles.wbFingerprintWrap} activeOpacity={0.7}>
@@ -537,7 +563,27 @@ export default function LoginScreen({ navigation }) {
                   <Text style={styles.wbLogoutAction}>Logout</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+
+              {whatsappNumber ? (
+                <TouchableOpacity
+                  style={styles.wbSupportCard}
+                  onPress={() => {
+                    const num = whatsappNumber.replace(/[^0-9]/g, "").replace(/^0+/, "");
+                    Linking.openURL(`https://wa.me/234${num}`);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.wbSupportIcon}>
+                    <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.wbSupportTitle}>Contact Support</Text>
+                    <Text style={styles.wbSupportSub}>Chat with us on WhatsApp</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                </TouchableOpacity>
+              ) : null}
+            </ScrollView>
           </KeyboardAvoidingView>
         </LinearGradient>
       ) : (
@@ -776,6 +822,45 @@ const styles = StyleSheet.create({
     color: "#ef4444",
   },
 
+  wbCardTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#0f172a",
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  wbCardName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#64748b",
+    marginBottom: 24,
+  },
+  wbSupportCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 16,
+    width: "100%",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  wbSupportIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#25D366",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wbSupportTitle: { fontSize: 14, fontWeight: "800", color: "#0f172a" },
+  wbSupportSub: { fontSize: 12, fontWeight: "500", color: "#64748b", marginTop: 1 },
   /* ── Body ───────────────────────────────────────────────── */
   bodyContent: { padding: 20 },
   heading: { fontSize: 22, fontWeight: "900", color: COLORS.black, letterSpacing: -0.8, marginBottom: 4 },
