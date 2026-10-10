@@ -75,12 +75,17 @@ export function PhoneInput({
       }
 
       // Dynamically import expo-contacts only after permission is granted
-      const Contacts = require("expo-contacts");
-      const result = await Contacts.presentContactPickerAsync();
-      if (!result || !result.phoneNumbers?.length) return;
+      // SDK 57: presentContactPickerAsync is a runtime-throwing stub — use the
+      // class-based API (Contact.presentPicker -> getPhones) instead.
+      const { Contact } = require("expo-contacts");
+      const picked = await Contact.presentPicker();
+      if (!picked) return;
+
+      const phones = await picked.getPhones();
+      if (!phones?.length) return;
 
       // Pick the first number; strip spaces, dashes, brackets
-      const raw = result.phoneNumbers[0].number || "";
+      const raw = phones[0].number || "";
       const cleaned = raw.replace(/[\s\-().+]/g, "");
       // Normalise Nigerian numbers: +234XXXXXXXXXX → 0XXXXXXXXXX
       const normalised = cleaned.startsWith("234")
