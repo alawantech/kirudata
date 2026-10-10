@@ -8,6 +8,7 @@ import {
   Easing,
   Dimensions,
   Image,
+  Linking,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -21,7 +22,6 @@ const LOGO_CACHE_KEY = "cached_logo_url";
 const LOCAL_LOGO = require("../../../assets/logo-gsub.png");
 
 const BRAND = "Kiru";
-const BRAND_TAG = "DATA SUB";
 
 const SLIDES = [
   {
@@ -119,7 +119,13 @@ function Illustration({ slide, glow }) {
 export default function WelcomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [logoUrl, setLogoUrl] = useState(null);
+  const [logoFailed, setLogoFailed] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   const [index, setIndex] = useState(0);
+
+  const scrollRef = useRef(null);
+  const idxRef = useRef(0);
+  const timerRef = useRef(null);
 
   const glow = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(0)).current;
@@ -149,6 +155,7 @@ export default function WelcomeScreen({ navigation }) {
       .get("/public/settings")
       .then((r) => {
         const s = r.data?.data?.settings;
+        setWhatsappNumber(s?.whatsapp || s?.phone || "");
         const url = normaliseUrl(s?.logoUrl);
         if (url) {
           setLogoUrl(url);
@@ -168,63 +175,124 @@ export default function WelcomeScreen({ navigation }) {
     Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, []);
 
+  const startAuto = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      const next = (idxRef.current + 1) % SLIDES.length;
+      idxRef.current = next;
+      setIndex(next);
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({ x: next * W, animated: true });
+      }
+    }, 4000);
+  };
+
+  useEffect(() => {
+    startAuto();
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  const openWhatsApp = () => {
+    if (whatsappNumber) {
+      const num = whatsappNumber.replace(/[^0-9]/g, "").replace(/^0+/, "");
+      Linking.openURL(`https://wa.me/234${num}`);
+    }
+  };
+
   if (!fontsLoaded) return null;
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bgDeep }}>
-      {/* Header: logo + brand (centered) */}
+      {/* Header: logo (left) + contact support (right) */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
+          justifyContent: "space-between",
+          paddingHorizontal: 20,
           paddingTop: (insets.top || 24) + 8,
         }}
       >
-        <Image
-          source={logoUrl ? { uri: logoUrl } : LOCAL_LOGO}
-          style={{ width: 42, height: 42, borderRadius: 12 }}
-          resizeMode="contain"
-          onError={() => setLogoUrl(null)}
-        />
-        <View>
-          <Text
+        {logoFailed ? (
+          <View
             style={{
-              fontFamily: F.bold,
-              fontSize: 17,
-              fontWeight: "700",
-              color: C.textPrimary,
-              lineHeight: 19,
+              height: 42,
+              paddingHorizontal: 12,
+              borderRadius: 12,
+              backgroundColor: "#ffffff",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            {BRAND}
-          </Text>
+            <Text
+              style={{
+                fontFamily: F.bold,
+                fontSize: 14,
+                fontWeight: "700",
+                color: "#0A0918",
+              }}
+            >
+              {BRAND}
+            </Text>
+          </View>
+        ) : (
+          <Image
+            source={logoUrl ? { uri: logoUrl } : LOCAL_LOGO}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 12,
+              backgroundColor: "#ffffff",
+            }}
+            resizeMode="contain"
+            onError={() => setLogoFailed(true)}
+          />
+        )}
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={openWhatsApp}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingHorizontal: 14,
+            paddingVertical: 9,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: "rgba(182,255,92,0.25)",
+            backgroundColor: "rgba(182,255,92,0.06)",
+          }}
+        >
+          <Ionicons name="logo-whatsapp" size={16} color={C.lime1} />
           <Text
             style={{
-              fontFamily: F.medium,
-              fontSize: 9,
-              fontWeight: "500",
+              fontFamily: F.semiBold,
+              fontSize: 12.5,
+              fontWeight: "600",
               color: C.lime1,
-              letterSpacing: 2.5,
             }}
           >
-            {BRAND_TAG}
+            Contact support
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Onboarding carousel */}
       <Animated.View style={{ flex: 1, opacity: fade }}>
         <FlatList
+          ref={scrollRef}
           data={SLIDES}
           keyExtractor={(_, i) => String(i)}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) =>
-            setIndex(Math.round(e.nativeEvent.contentOffset.x / W))
-          }
+          onMomentumScrollEnd={(e) => {
+            const i = Math.round(e.nativeEvent.contentOffset.x / W);
+            idxRef.current = i;
+            setIndex(i);
+            startAuto();
+          }}
           contentContainerStyle={{ flexGrow: 1 }}
           renderItem={({ item }) => (
             <View
