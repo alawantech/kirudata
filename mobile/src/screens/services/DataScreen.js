@@ -24,15 +24,6 @@ import { COLORS, RADIUS, SHADOW } from "../../constants/theme";
 import NetworkLogo from "../../components/NetworkLogo";
 import { fetchWithCache, TTL } from "../../utils/cache";
 
-// Map network status fields to data type IDs
-const TYPE_STATUS_MAP = {
-  SME: "smeStatus",
-  SME2: "sme2Status",
-  Gifting: "giftingStatus",
-  Corporate: "corporateStatus",
-  Coupon: "couponStatus",
-};
-
 function formatValidity(v) {
   if (!v) return "";
   const num = parseInt(v, 10);
@@ -83,25 +74,10 @@ export default function DataScreen({ navigation }) {
       .then((fetched) => {
         setAllPlans(fetched);
 
-        // Find the selected network's status fields
-        const netObj = networks.find((n) => n.id === network);
-        if (!netObj) {
-          setAvailableTypes([]);
-          return;
-        }
-
-        // Filter types based on what's enabled on this network
-        const types = [];
-        for (const [typeId, statusField] of Object.entries(TYPE_STATUS_MAP)) {
-          // Check if this type exists in plans AND is enabled on the network
-          const hasPlans = fetched.some(
-            (p) => p.type && p.type.toLowerCase() === typeId.toLowerCase(),
-          );
-          const isEnabled = netObj[statusField] === "On";
-          if (hasPlans && isEnabled) {
-            types.push(typeId);
-          }
-        }
+        // The backend already filters plans by the network's status flags
+        // (sme/gifting/corporate) — derive type chips from the response exactly
+        // like the web app, so every returned type (e.g. "Cooperate Gifting") shows.
+        const types = [...new Set(fetched.map((p) => p.type).filter(Boolean))];
         setAvailableTypes(types);
       })
       .catch(() => {
