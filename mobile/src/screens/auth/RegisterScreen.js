@@ -44,7 +44,6 @@ export default function RegisterScreen({ navigation }) {
   const logoAnim = useRef(new Animated.Value(0)).current;
   const [forceOpenKey, setForceOpenKey] = useState(0);
   const [whatsappNumber, setWhatsappNumber] = useState("");
-  const [tosAccepted, setTosAccepted] = useState(false);
 
   useEffect(() => {
     Animated.spring(logoAnim, {
@@ -97,11 +96,6 @@ export default function RegisterScreen({ navigation }) {
       Toast.show({ type: "error", text1: "Please enter your phone number" });
       return;
     }
-    if (!tosAccepted) {
-      Toast.show({ type: "error", text1: "Please accept the Terms & Conditions" });
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await client.post("/auth/check-account", {
@@ -355,22 +349,13 @@ export default function RegisterScreen({ navigation }) {
                 </View>
               </View>
 
-              {/* ── Terms & Conditions ── */}
-              <TouchableOpacity
-                style={styles.tosRow}
-                onPress={() => setTosAccepted(!tosAccepted)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.tosCheckbox, tosAccepted && styles.tosCheckboxActive]}>
-                  {tosAccepted && <Ionicons name="checkmark" size={12} color="#fff" />}
-                </View>
-                <Text style={styles.tosText}>
-                  I agree to the{" "}
-                  <Text style={styles.tosLink} onPress={() => Linking.openURL("https://kirudata.com/terms")}>Terms & Conditions</Text>
-                  {" "}and{" "}
-                  <Text style={styles.tosLink} onPress={() => Linking.openURL("https://kirudata.com/privacy")}>Privacy Policy</Text>
-                </Text>
-              </TouchableOpacity>
+              {/* ── Terms notice (no checkbox — consent implied on submit) ── */}
+              <Text style={[styles.tosText, { marginBottom: 16, paddingHorizontal: 4, textAlign: "center" }]}>
+                By clicking <Text style={{ fontWeight: "700", color: COLORS.black }}>Create Account</Text>, you agree to our{" "}
+                <Text style={styles.tosLink} onPress={() => Linking.openURL("https://kirudata.com/terms")}>Terms & Conditions</Text>
+                {" "}and{" "}
+                <Text style={styles.tosLink} onPress={() => Linking.openURL("https://kirudata.com/privacy")}>Privacy Policy</Text>.
+              </Text>
 
               {/* ── Submit Button ── */}
               <TouchableOpacity
@@ -756,27 +741,6 @@ const styles = StyleSheet.create({
   supportText: { fontSize: 12, fontWeight: "700", color: "#25D366" },
 
   /* ── Terms & Conditions ────────────────────────────────── */
-  tosRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  tosCheckbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 1,
-  },
-  tosCheckboxActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
   tosText: {
     flex: 1,
     fontSize: 12,
