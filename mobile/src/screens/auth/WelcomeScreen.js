@@ -221,39 +221,23 @@ export default function WelcomeScreen({ navigation }) {
         }}
       >
         {logoFailed ? (
-          <View
+          <Text
             style={{
-              height: 42,
-              paddingHorizontal: 12,
-              borderRadius: 12,
-              backgroundColor: "#ffffff",
-              borderWidth: 1,
-              borderColor: COLORS.border,
-              alignItems: "center",
-              justifyContent: "center",
+              fontFamily: F.bold,
+              fontSize: 22,
+              fontWeight: "700",
+              color: COLORS.black,
             }}
           >
-            <Text
-              style={{
-                fontFamily: F.bold,
-                fontSize: 14,
-                fontWeight: "700",
-                color: COLORS.black,
-              }}
-            >
-              {BRAND}
-            </Text>
-          </View>
+            {BRAND}
+          </Text>
         ) : (
           <Image
             source={logoUrl ? { uri: logoUrl } : LOCAL_LOGO}
             style={{
-              width: 42,
-              height: 42,
-              borderRadius: 12,
-              backgroundColor: "#ffffff",
-              borderWidth: 1,
-              borderColor: COLORS.border,
+              width: 76,
+              height: 76,
+              borderRadius: 18,
             }}
             resizeMode="contain"
             onError={() => setLogoFailed(true)}
