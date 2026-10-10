@@ -12,9 +12,11 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFonts, Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium } from "@expo-google-fonts/poppins";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SPLASH_COLORS as C, SPLASH_FONTS as F } from "../../constants/splashTheme";
+import { SPLASH_FONTS as F } from "../../constants/splashTheme";
+import { COLORS } from "../../constants/theme";
 import client, { API_BASE } from "../../api/client";
 
 const { width: W } = Dimensions.get("window");
@@ -22,6 +24,11 @@ const LOGO_CACHE_KEY = "cached_logo_url";
 const LOCAL_LOGO = require("../../../assets/logo-gsub.png");
 
 const BRAND = "Kiru";
+
+/* Brand palette (matches login / dashboard / shared Button component) */
+const BRAND_GRADIENT = ["#0f172a", "#1e3a8a", "#4f46e5"];
+const BTN_GRADIENT = ["#4f46e5", "#6366f1"];
+const WHATSAPP_GREEN = "#25D366";
 
 const SLIDES = [
   {
@@ -60,8 +67,8 @@ function Dots({ index }) {
           key={i}
           style={
             i === index
-              ? { width: 22, height: 7, borderRadius: 4, backgroundColor: C.lime1 }
-              : { width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.18)" }
+              ? { width: 22, height: 7, borderRadius: 4, backgroundColor: "#ffffff" }
+              : { width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.30)" }
           }
         />
       ))}
@@ -81,7 +88,7 @@ function Illustration({ slide, glow }) {
         justifyContent: "center",
       }}
     >
-      {/* Soft indigo blob (top-right) */}
+      {/* Violet blob accent (top-right) */}
       <View
         style={{
           position: "absolute",
@@ -90,28 +97,28 @@ function Illustration({ slide, glow }) {
           width: 110,
           height: 110,
           borderRadius: 55,
-          backgroundColor: C.indigo1,
-          opacity: 0.16,
+          backgroundColor: "#6366f1",
+          opacity: 0.55,
         }}
       />
-      {/* Main lime glow behind the icon */}
+      {/* Soft white glow behind the icon */}
       <Animated.View
         style={{
           position: "absolute",
           width: 165,
           height: 165,
           borderRadius: 83,
-          backgroundColor: "rgba(182,255,92,0.10)",
+          backgroundColor: "rgba(255,255,255,0.08)",
           borderWidth: 1,
-          borderColor: "rgba(182,255,92,0.22)",
+          borderColor: "rgba(255,255,255,0.22)",
           transform: [{ scale }],
         }}
       />
-      <Icon name={slide.icon} size={74} color={C.lime1} />
+      <Icon name={slide.icon} size={74} color="#ffffff" />
       {/* Floating accents */}
-      <View style={{ position: "absolute", top: 16, left: 30, width: 6, height: 6, borderRadius: 3, backgroundColor: C.lime1, opacity: 0.6 }} />
-      <View style={{ position: "absolute", bottom: 24, right: 36, width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#ffffff", opacity: 0.35 }} />
-      <View style={{ position: "absolute", bottom: 46, left: 40, width: 4, height: 4, borderRadius: 2, backgroundColor: C.indigo2, opacity: 0.7 }} />
+      <View style={{ position: "absolute", top: 16, left: 30, width: 6, height: 6, borderRadius: 3, backgroundColor: "#ffffff", opacity: 0.6 }} />
+      <View style={{ position: "absolute", bottom: 24, right: 36, width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#ffffff", opacity: 0.4 }} />
+      <View style={{ position: "absolute", bottom: 46, left: 40, width: 4, height: 4, borderRadius: 2, backgroundColor: "#a5b4fc", opacity: 0.9 }} />
     </View>
   );
 }
@@ -182,7 +189,7 @@ export default function WelcomeScreen({ navigation }) {
       idxRef.current = next;
       setIndex(next);
       if (scrollRef.current) {
-        scrollRef.current.scrollTo({ x: next * W, animated: true });
+        scrollRef.current.scrollToOffset({ offset: next * W, animated: true });
       }
     }, 4000);
   };
@@ -202,7 +209,7 @@ export default function WelcomeScreen({ navigation }) {
   if (!fontsLoaded) return null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bgDeep }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
       {/* Header: logo (left) + contact support (right) */}
       <View
         style={{
@@ -220,6 +227,8 @@ export default function WelcomeScreen({ navigation }) {
               paddingHorizontal: 12,
               borderRadius: 12,
               backgroundColor: "#ffffff",
+              borderWidth: 1,
+              borderColor: COLORS.border,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -229,7 +238,7 @@ export default function WelcomeScreen({ navigation }) {
                 fontFamily: F.bold,
                 fontSize: 14,
                 fontWeight: "700",
-                color: "#0A0918",
+                color: COLORS.black,
               }}
             >
               {BRAND}
@@ -243,6 +252,8 @@ export default function WelcomeScreen({ navigation }) {
               height: 42,
               borderRadius: 12,
               backgroundColor: "#ffffff",
+              borderWidth: 1,
+              borderColor: COLORS.border,
             }}
             resizeMode="contain"
             onError={() => setLogoFailed(true)}
@@ -260,17 +271,17 @@ export default function WelcomeScreen({ navigation }) {
             paddingVertical: 9,
             borderRadius: 20,
             borderWidth: 1,
-            borderColor: "rgba(182,255,92,0.25)",
-            backgroundColor: "rgba(182,255,92,0.06)",
+            borderColor: "rgba(79,70,229,0.25)",
+            backgroundColor: "rgba(79,70,229,0.06)",
           }}
         >
-          <Ionicons name="logo-whatsapp" size={16} color={C.lime1} />
+          <Ionicons name="logo-whatsapp" size={16} color={WHATSAPP_GREEN} />
           <Text
             style={{
               fontFamily: F.semiBold,
               fontSize: 12.5,
               fontWeight: "600",
-              color: C.lime1,
+              color: COLORS.primary,
             }}
           >
             Contact support
@@ -302,15 +313,20 @@ export default function WelcomeScreen({ navigation }) {
                 justifyContent: "center",
               }}
             >
-              <View
+              <LinearGradient
+                colors={BRAND_GRADIENT}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{
                   borderRadius: 26,
-                  backgroundColor: "rgba(255,255,255,0.05)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.08)",
                   paddingHorizontal: 24,
                   paddingTop: 26,
                   paddingBottom: 26,
+                  shadowColor: "#0f172a",
+                  shadowOffset: { width: 0, height: 10 },
+                  shadowOpacity: 0.22,
+                  shadowRadius: 18,
+                  elevation: 8,
                 }}
               >
                 <Illustration slide={item} glow={glow} />
@@ -320,7 +336,7 @@ export default function WelcomeScreen({ navigation }) {
                     fontFamily: F.bold,
                     fontSize: 24,
                     fontWeight: "700",
-                    color: C.textPrimary,
+                    color: "#ffffff",
                     textAlign: "center",
                     lineHeight: 32,
                     marginTop: 14,
@@ -334,7 +350,7 @@ export default function WelcomeScreen({ navigation }) {
                     fontFamily: F.medium,
                     fontSize: 13,
                     fontWeight: "500",
-                    color: C.textSecondary,
+                    color: "rgba(255,255,255,0.78)",
                     textAlign: "center",
                     lineHeight: 21,
                     marginTop: 10,
@@ -345,7 +361,7 @@ export default function WelcomeScreen({ navigation }) {
                 </Text>
 
                 <Dots index={index} />
-              </View>
+              </LinearGradient>
             </View>
           )}
         />
@@ -361,13 +377,20 @@ export default function WelcomeScreen({ navigation }) {
         }}
       >
         <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate("Register")}>
-          <View
+          <LinearGradient
+            colors={BTN_GRADIENT}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
             style={{
               height: 54,
-              borderRadius: 16,
-              backgroundColor: C.lime1,
+              borderRadius: 27,
               alignItems: "center",
               justifyContent: "center",
+              shadowColor: "#4f46e5",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.30,
+              shadowRadius: 12,
+              elevation: 6,
             }}
           >
             <Text
@@ -375,12 +398,12 @@ export default function WelcomeScreen({ navigation }) {
                 fontFamily: F.semiBold,
                 fontSize: 15.5,
                 fontWeight: "700",
-                color: "#0A0918",
+                color: "#ffffff",
               }}
             >
               Get Started
             </Text>
-          </View>
+          </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -393,7 +416,7 @@ export default function WelcomeScreen({ navigation }) {
               fontFamily: F.semiBold,
               fontSize: 14.5,
               fontWeight: "600",
-              color: C.textPrimary,
+              color: COLORS.primary,
             }}
           >
             Login
