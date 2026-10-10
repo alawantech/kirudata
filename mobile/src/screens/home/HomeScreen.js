@@ -25,7 +25,7 @@ import client, { API_BASE } from "../../api/client";
 import { useExitConfirm } from "../../hooks/useExitConfirm";
 
 const LOGO_CACHE_KEY = "cached_logo_url";
-const LOCAL_LOGO = require("../../../assets/logo-gsub.png");
+const LOCAL_LOGO = require("../../../assets/logo-kiru.png");
 import { Badge } from "../../components/Card";
 import { ForcedPinModal } from "../../components/ForcedPinModal";
 import { COLORS, RADIUS, SHADOW } from "../../constants/theme";

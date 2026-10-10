@@ -21,9 +21,14 @@ import client, { API_BASE } from "../../api/client";
 
 const { width: W } = Dimensions.get("window");
 const LOGO_CACHE_KEY = "cached_logo_url";
-const LOCAL_LOGO = require("../../../assets/logo-gsub.png");
+const LOCAL_LOGO = require("../../../assets/logo-kiru.png");
 
-const BRAND = "Kiru";
+const LOGO_STYLE = {
+              width: 170,
+              height: 52,
+            };
+const WORDMARK_NAME = "Kiru";
+const WORDMARK_SUB = "Data";
 
 /* Brand palette (matches login / dashboard / shared Button component) */
 const BRAND_GRADIENT = ["#0f172a", "#1e3a8a", "#4f46e5"];
@@ -220,28 +225,36 @@ export default function WelcomeScreen({ navigation }) {
           paddingTop: (insets.top || 24) + 8,
         }}
       >
-        {logoFailed ? (
-          <Text
-            style={{
-              fontFamily: F.bold,
-              fontSize: 22,
-              fontWeight: "700",
-              color: COLORS.black,
-            }}
-          >
-            {BRAND}
-          </Text>
-        ) : (
+        {logoUrl || (LOCAL_LOGO && !logoFailed) ? (
           <Image
             source={logoUrl ? { uri: logoUrl } : LOCAL_LOGO}
-            style={{
-              width: 76,
-              height: 76,
-              borderRadius: 18,
-            }}
+            style={LOGO_STYLE}
             resizeMode="contain"
             onError={() => setLogoFailed(true)}
           />
+        ) : (
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 7 }}>
+            <Text
+              style={{
+                fontFamily: F.bold,
+                fontSize: 22,
+                fontWeight: "800",
+                color: COLORS.black,
+              }}
+            >
+              {WORDMARK_NAME}
+            </Text>
+            <Text
+              style={{
+                fontFamily: F.bold,
+                fontSize: 22,
+                fontWeight: "800",
+                color: COLORS.primary,
+              }}
+            >
+              {WORDMARK_SUB}
+            </Text>
+          </View>
         )}
 
         <TouchableOpacity

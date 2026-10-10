@@ -44,7 +44,7 @@ function maskEmail(email = "") {
 }
 
 const LOGO_CACHE_KEY = "cached_logo_url";
-const LOCAL_LOGO = require("../../../assets/logo-gsub.png");
+const LOCAL_LOGO = require("../../../assets/logo-kiru.png");
 
 export default function LoginScreen({ navigation }) {
   const { login, lastUser, clearLastUser, completeOtpLogin } = useAuth();
