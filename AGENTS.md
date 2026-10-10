@@ -293,7 +293,7 @@ These use `protectAdmin` from `auth.js` (cookie or Bearer fallback).
 ### Key Screens
 | Screen | Purpose |
 |--------|---------|
-| `WelcomeScreen` | First screen (hero image, login/register buttons, WhatsApp link) |
+| `WelcomeScreen` | First screen: 3-slide onboarding carousel (Welcome / We are Automated / Customer Support) with Get Started → Register + Login |
 | `LoginScreen` | Email/phone → password (2-step) |
 | `RegisterScreen` | Details → password → confirm (3-step) |
 | `ForgotPasswordScreen` | Email → OTP → new password |
@@ -482,6 +482,7 @@ git push origin main
 | 2026-10-10 | Mobile app upgraded Expo SDK 54 → 57 (expo ~57.0.21, react 19.2.3, react-native 0.86.3) so it runs in the current Expo Go (SDK 57) — fixes "Project is incompatible with this version of Expo Go". Added explicit `@expo/vector-icons` (no longer a transitive dep), `expo install --fix` aligned all expo-* packages (expo-sharing/expo-status-bar config plugins auto-added to app.json). Verified: `expo export --platform android` bundles clean (756+ modules). Same upgrade applied to all four data-sub projects (abubakardev mobile was already SDK 57). | §7, §13 | Repo pushed (mobile not server-deployed).
 | 2026-10-10 | Mobile contact picker fixed for SDK 57: `PhoneInput.js` migrated from `presentContactPickerAsync()` (now a deprecation stub that throws at runtime — picker failed silently with WARN logs) to the new class-based API `Contact.presentPicker()` + `getPhones()`, per Expo's expo-contacts migration guide. iOS permission path unchanged (root `requestPermissionsAsync`). Applied to all four data-sub mobile apps; `expo export` bundles clean. | §7, §13 | Repo pushed (mobile not server-deployed).
 | 2026-10-10 | Mobile data type chips fixed (corporate gifting invisible on app): `DataScreen.js` discovered available types with a client-side `TYPE_STATUS_MAP` keyed `Corporate`, but plans store type `Cooperate Gifting` — the match never hit, so the chip never appeared (web derives types straight from the API response and showed fine; backend already gates by network status flags server-side). Mobile now derives type chips from the response (`[...new Set(p.type)]`), exactly like web. Applied to all four data-sub mobile apps; `expo export` bundles clean. | §7, §13 | Repo pushed (mobile not server-deployed).
+| 2026-10-10 | Mobile onboarding redesigned to match reference screenshots: `WelcomeScreen` rebuilt in all four data-sub apps as a 3-slide swipeable carousel — centered logo+brand header, dark rounded card with pulsing glow illustration (rocket / robot / headset icons), per-slide title+subtitle ("Welcome to <brand>" / "We are Automated" / "Customer Support"), pagination dots with brand-colored active pill, brand-colored "Get Started" → Register + plain "Login" button. Replaced the old single-screen hero (orbiting badges, service pills, WhatsApp button, dead Terms/Privacy links — those routes never existed in the navigator). Per-app brand strings only (Gwarzo/Kiru/Guchor/Hamij). `expo export` bundles clean. | §7, §13 | Repo pushed (mobile not server-deployed).
 
 ---
 
