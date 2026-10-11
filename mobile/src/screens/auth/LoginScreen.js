@@ -446,7 +446,6 @@ export default function LoginScreen({ navigation }) {
   );
 
   const canShowBiometric = isReturning && biometric.isSupported && biometric.isEnrolled && biometric.isEnabled;
-console.log("=== RENDER: canShowBiometric ===", canShowBiometric, { isReturning, isSupported: biometric.isSupported, isEnrolled: biometric.isEnrolled, isEnabled: biometric.isEnabled });
 
   const Logo = ({ size = 140, style }) => (
     <Image
@@ -516,28 +515,24 @@ console.log("=== RENDER: canShowBiometric ===", canShowBiometric, { isReturning,
                 {firstName ? <Text style={styles.wbCardName}>{firstName}</Text> : null}
 
                 {/* Fingerprint */}
-{canShowBiometric ? (
+{/* TEST: Always show fingerprint button for debugging */}
                     <Pressable
                       onPress={() => {
-                        console.log("=== FINGERPRESS PRESSED ===");
-                        console.log("canShowBiometric:", canShowBiometric);
-                        console.log("biometric.isSupported:", biometric.isSupported);
-                        console.log("biometric.isEnrolled:", biometric.isEnrolled);
-                        console.log("biometric.isEnabled:", biometric.isEnabled);
-                        Alert.alert("Test", "Fingerprint button pressed!");
+                        console.log("=== TEST FINGERPRINT PRESSED ===");
+                        Alert.alert("TEST", "Fingerprint button works! Press registered.");
                         handleBiometricLogin();
                       }}
                       style={({ pressed }) => [
                         styles.wbFingerprintWrap,
                         pressed && { opacity: 0.5 },
                       ]}
-                      hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                      hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
                       android_disableSound
                     >
                       <View style={styles.wbFingerprintCircle}>
                         <Ionicons name="finger-print" size={36} color="#1e293b" />
                       </View>
-                      <Text style={styles.wbFingerprintLabel}>Scan Your Fingerprint</Text>
+                      <Text style={styles.wbFingerprintLabel}>TEST: Scan Your Fingerprint</Text>
                     </Pressable>
                   ) : (
                   <View style={styles.wbFingerprintWrap}>
