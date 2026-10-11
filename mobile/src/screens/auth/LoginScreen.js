@@ -198,7 +198,7 @@ export default function LoginScreen({ navigation }) {
   useEffect(() => { if (resendCooldown <= 0) return; const t = setInterval(() => { setResendCooldown((p) => { if (p <= 1) { clearInterval(t); return 0; } return p - 1; }); }, 1000); return () => clearInterval(t); }, [resendCooldown]);
   useEffect(() => { if (otpCode.every((c) => c !== "") && otpStep && !otpLoading) handleVerifyOtp(); }, [otpCode]);
 
-  const handleBiometricLogin = async () => {
+const handleBiometricLogin = async () => {
     console.log("handleBiometricLogin called");
     console.log("biometric state:", { isSupported: biometric.isSupported, isEnrolled: biometric.isEnrolled, isEnabled: biometric.isEnabled });
     try {
@@ -206,7 +206,7 @@ export default function LoginScreen({ navigation }) {
       console.log("biometric authenticate result:", result);
       if (!result.success) {
         if (result.error !== "user_cancel" && result.error !== "system_cancel") {
-          Toast.show({ type: "error", text1: result.message || "Biometric failed. Enter your password." });
+          Toast.show({ type: "error", text1: String(result.message || "Biometric failed. Enter your password.") });
         }
         return;
       }
@@ -220,11 +220,11 @@ export default function LoginScreen({ navigation }) {
       if (loginResult?.requiresOtp) {
         setOtpToken(loginResult.otpToken); setOtpEmail(loginResult.email);
         setOtpStep(true); setResendCooldown(60);
-        Toast.show({ type: "info", text1: "Verification code sent to your email" });
+        Toast.show({ type: "info", text1: String("Verification code sent to your email") });
         return;
       }
-      Toast.show({ type: "success", text1: "Welcome back! \uD83D\uDC4B" });
-    } catch (err) { Toast.show({ type: "error", text1: err?.response?.data?.msg || "Sign in failed" }); }
+      Toast.show({ type: "success", text1: String("Welcome back! \uD83D\uDC4B") });
+    } catch (err) { Toast.show({ type: "error", text1: String(err?.response?.data?.msg || "Sign in failed") }); }
   };
 
   const handleNotYou = async () => {
@@ -515,25 +515,30 @@ export default function LoginScreen({ navigation }) {
                 {firstName ? <Text style={styles.wbCardName}>{firstName}</Text> : null}
 
                 {/* Fingerprint */}
-{/* TEST: Always show fingerprint button for debugging */}
+{canShowBiometric ? (
                     <Pressable
-                      onPress={() => {
-                        console.log("=== TEST FINGERPRINT PRESSED ===");
-                        Alert.alert("TEST", "Fingerprint button works! Press registered.");
-                        handleBiometricLogin();
-                      }}
+                      onPress={handleBiometricLogin}
                       style={({ pressed }) => [
                         styles.wbFingerprintWrap,
-                        pressed && { opacity: 0.5 },
+                        pressed && { opacity: 0.7 },
                       ]}
-                      hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+                      hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                       android_disableSound
                     >
                       <View style={styles.wbFingerprintCircle}>
                         <Ionicons name="finger-print" size={36} color="#1e293b" />
                       </View>
-                      <Text style={styles.wbFingerprintLabel}>TEST: Scan Your Fingerprint</Text>
+                      <Text style={styles.wbFingerprintLabel}>Scan Your Fingerprint</Text>
                     </Pressable>
+                  ) : biometric.isSupported && biometric.isEnrolled && !biometric.isEnabled ? (
+                    <View style={styles.wbFingerprintWrap}>
+                      <View style={[styles.wbFingerprintCircle, { backgroundColor: "#f1f5f9" }]}>
+                        <Ionicons name="finger-print" size={36} color="#94a3b8" />
+                      </View>
+                      <Text style={styles.wbFingerprintLabel}>
+                        Log in with password first to enable fingerprint
+                      </Text>
+                    </View>
                   ) : (
                   <View style={styles.wbFingerprintWrap}>
                     <View style={[styles.wbFingerprintCircle, { backgroundColor: "#f1f5f9" }]}>
