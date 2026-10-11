@@ -513,8 +513,14 @@ export default function LoginScreen({ navigation }) {
                 {firstName ? <Text style={styles.wbCardName}>{firstName}</Text> : null}
 
                 {/* Fingerprint */}
-                {canShowBiometric ? (
-                  <TouchableOpacity onPress={handleBiometricLogin} style={styles.wbFingerprintWrap} activeOpacity={0.7}>
+{canShowBiometric ? (
+                    <TouchableOpacity 
+                      onPress={() => {
+                        console.log("Fingerprint button pressed, canShowBiometric:", canShowBiometric);
+                        handleBiometricLogin();
+                      }} 
+                      style={styles.wbFingerprintWrap} 
+                      activeOpacity={0.7}>
                     <View style={styles.wbFingerprintCircle}>
                       <Ionicons name="finger-print" size={36} color="#1e293b" />
                     </View>

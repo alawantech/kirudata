@@ -52,6 +52,7 @@ export function useBiometric() {
 
   /** Call this after a successful password login to save credentials */
   const saveCredentials = async (identifier, password) => {
+    console.log("biometric.saveCredentials called with:", { identifier });
     try {
       await SecureStore.setItemAsync(
         BIOMETRIC_CREDENTIALS_KEY,
@@ -59,8 +60,10 @@ export function useBiometric() {
       );
       await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, "true");
       setIsEnabled(true);
+      console.log("Biometric credentials saved successfully");
       return true;
-    } catch {
+    } catch (e) {
+      console.error("Failed to save biometric credentials:", e);
       return false;
     }
   };
@@ -82,6 +85,7 @@ export function useBiometric() {
    * Returns { success: true, identifier, password } on success, or { success: false, error }
    */
   const authenticate = useCallback(async () => {
+    console.log("biometric.authenticate called");
     try {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: "Verify your identity",
@@ -89,13 +93,17 @@ export function useBiometric() {
         cancelLabel: "Cancel",
         disableDeviceFallback: true,
       });
+      console.log("LocalAuthentication.authenticateAsync result:", result);
 
       if (!result.success) {
+        console.log("Biometric authentication failed:", result.error);
         return { success: false, error: result.error };
       }
 
       const raw = await SecureStore.getItemAsync(BIOMETRIC_CREDENTIALS_KEY);
+      console.log("SecureStore BIOMETRIC_CREDENTIALS_KEY raw:", raw);
       if (!raw) {
+        console.log("No biometric credentials found in SecureStore");
         return {
           success: false,
           error: "no_credentials",
@@ -104,8 +112,10 @@ export function useBiometric() {
       }
 
       const { identifier, password } = JSON.parse(raw);
+      console.log("Biometric credentials retrieved:", { identifier });
       return { success: true, identifier, password };
     } catch (err) {
+      console.error("Biometric authenticate error:", err);
       return { success: false, error: "unknown", message: err.message };
     }
   }, []);
