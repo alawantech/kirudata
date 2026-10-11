@@ -772,7 +772,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 40,
+    paddingBottom: 160,
   },
   passwordCard: {
     width: "100%",
