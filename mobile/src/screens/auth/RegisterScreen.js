@@ -452,7 +452,7 @@ export default function RegisterScreen({ navigation }) {
                 onAction={handlePasswordSubmit}
                 actionLabel="Continue"
                 actionLoading={loading}
-                autoFocus
+                forceOpenKey={forceOpenKey}
               />
             </ScrollView>
           )}
@@ -476,7 +476,7 @@ export default function RegisterScreen({ navigation }) {
                 onAction={handleConfirmSubmit}
                 actionLabel="Create Account"
                 actionLoading={loading}
-                autoFocus
+                forceOpenKey={forceOpenKey}
               />
             </ScrollView>
           )}

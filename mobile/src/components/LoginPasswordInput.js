@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,12 +19,21 @@ export function LoginPasswordInput({
   actionLoading = false,
   placeholder = "Enter your password",
   autoFocus = false,
+  forceOpenKey = 0,
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [focused, setFocused] = useState(false);
   const inputRef = useRef(null);
 
   const isValid = value.length >= MIN_LENGTH;
+
+  useEffect(() => {
+    if (autoFocus || forceOpenKey > 0) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+    }
+  }, [autoFocus, forceOpenKey]);
 
   return (
     <View style={styles.wrapper}>
@@ -73,8 +82,8 @@ export function LoginPasswordInput({
         {value.length === 0
           ? "Minimum 8 characters"
           : value.length < MIN_LENGTH
-            ? `${value.length} / ${MIN_LENGTH} characters`
-            : "\u2713 Password ready"}
+          ? `${value.length} / ${MIN_LENGTH} characters`
+          : "\u2713 Password ready"}
       </Text>
 
       <TouchableOpacity
