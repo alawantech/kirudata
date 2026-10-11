@@ -15,6 +15,7 @@ import {
   Linking,
   Keyboard,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -516,11 +517,17 @@ export default function LoginScreen({ navigation }) {
 {canShowBiometric ? (
                     <TouchableOpacity 
                       onPress={() => {
-                        console.log("Fingerprint button pressed, canShowBiometric:", canShowBiometric);
+                        console.log("=== FINGERPRINT BUTTON PRESSED ===");
+                        console.log("canShowBiometric:", canShowBiometric);
+                        console.log("biometric.isSupported:", biometric.isSupported);
+                        console.log("biometric.isEnrolled:", biometric.isEnrolled);
+                        console.log("biometric.isEnabled:", biometric.isEnabled);
+                        Alert.alert("Test", "Fingerprint button pressed!");
                         handleBiometricLogin();
                       }} 
                       style={styles.wbFingerprintWrap} 
-                      activeOpacity={0.7}>
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
                     <View style={styles.wbFingerprintCircle}>
                       <Ionicons name="finger-print" size={36} color="#1e293b" />
                     </View>
@@ -751,6 +758,7 @@ const styles = StyleSheet.create({
   wbFingerprintWrap: {
     alignItems: "center",
     marginBottom: 24,
+    // Ensure touch events pass through
   },
   wbFingerprintCircle: {
     width: 72,
