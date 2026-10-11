@@ -524,8 +524,8 @@ export default function LoginScreen({ navigation }) {
                   <View style={styles.wbFingerprintWrap}>
                     <View style={[styles.wbFingerprintCircle, { backgroundColor: "#f1f5f9" }]}>
                       <Ionicons name="finger-print" size={36} color="#94a3b8" />
-                    </View>
-                    <Text style={styles.wbFingerprintLabel}>Enter your password below</Text>
+</View>
+                  <Text style={styles.wbFingerprintLabel}>Use Fingerprint</Text>
                   </View>
                 )}
 
@@ -535,7 +535,7 @@ export default function LoginScreen({ navigation }) {
                     style={styles.wbPasswordInput}
                     value={password}
                     onChangeText={setPassword}
-                    placeholder="Password"
+                    placeholder="Enter your password"
                     placeholderTextColor="#94a3b8"
                     secureTextEntry={!showWbPassword}
                     autoCapitalize="none"
@@ -546,6 +546,7 @@ export default function LoginScreen({ navigation }) {
                   <TouchableOpacity onPress={() => setShowWbPassword((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                     <Text style={styles.wbShowToggle}>{showWbPassword ? "Hide" : "Show"}</Text>
                   </TouchableOpacity>
+                  <Text style={styles.wbInputLabel}>Password</Text>
                 </View>
 
                 {/* Login Button */}
@@ -763,14 +764,15 @@ const styles = StyleSheet.create({
   },
   wbPasswordField: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
     width: "100%",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#fff",
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: "#e2e8f0",
     paddingHorizontal: 16,
-    height: 54,
+    paddingTop: 18,
+    paddingBottom: 12,
     marginBottom: 16,
   },
   wbPasswordInput: {
@@ -779,12 +781,25 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#0f172a",
     paddingVertical: 0,
+    paddingRight: 8,
   },
   wbShowToggle: {
     fontSize: 14,
     fontWeight: "700",
     color: "#4f46e5",
     marginLeft: 8,
+    marginBottom: 2,
+  },
+  wbInputLabel: {
+    position: "absolute",
+    left: 16,
+    bottom: 42,
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#64748b",
+    backgroundColor: "#fff",
+    paddingHorizontal: 4,
+    zIndex: 1,
   },
   wbLoginBtn: {
     width: "100%",
