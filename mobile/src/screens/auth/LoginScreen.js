@@ -119,7 +119,7 @@ export default function LoginScreen({ navigation }) {
     const loginId = id || isReturning ? lastUser.identifier : identifier.trim();
     const loginPw = pw || password;
     if (!loginId) { Toast.show({ type: "error", text1: "Please enter your email or phone" }); return; }
-    if (loginPw.length !== 8) { Toast.show({ type: "error", text1: "Password must be exactly 8 digits" }); return; }
+    if (loginPw.length < 8) { Toast.show({ type: "error", text1: "Password must be at least 8 characters" }); return; }
     setLoading(true);
     try {
       let deviceFingerprint = null;
