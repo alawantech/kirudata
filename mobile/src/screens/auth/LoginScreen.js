@@ -447,6 +447,16 @@ const handleBiometricLogin = async () => {
 
   const canShowBiometric = isReturning && biometric.isSupported && biometric.isEnrolled && biometric.isEnabled;
 
+  // Debug: Log biometric state on every render
+  console.log("=== BIOMETRIC STATE ===", {
+    isReturning,
+    isSupported: biometric.isSupported,
+    isEnrolled: biometric.isEnrolled,
+    isEnabled: biometric.isEnabled,
+    canShowBiometric,
+    biometricType: biometric.biometricType,
+  });
+
   const Logo = ({ size = 140, style }) => (
     <Image
       source={logoUrl ? { uri: logoUrl } : LOCAL_LOGO}
@@ -514,39 +524,56 @@ const handleBiometricLogin = async () => {
                 <Text style={styles.wbCardTitle}>Welcome Back</Text>
                 {firstName ? <Text style={styles.wbCardName}>{firstName}</Text> : null}
 
-                {/* Fingerprint */}
-{canShowBiometric ? (
-                    <Pressable
-                      onPress={handleBiometricLogin}
-                      style={({ pressed }) => [
-                        styles.wbFingerprintWrap,
-                        pressed && { opacity: 0.7 },
-                      ]}
-                      hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                      android_disableSound
-                    >
-                      <View style={styles.wbFingerprintCircle}>
-                        <Ionicons name="finger-print" size={36} color="#1e293b" />
-                      </View>
-                      <Text style={styles.wbFingerprintLabel}>Scan Your Fingerprint</Text>
-                    </Pressable>
-                  ) : biometric.isSupported && biometric.isEnrolled && !biometric.isEnabled ? (
-                    <View style={styles.wbFingerprintWrap}>
-                      <View style={[styles.wbFingerprintCircle, { backgroundColor: "#f1f5f9" }]}>
-                        <Ionicons name="finger-print" size={36} color="#94a3b8" />
-                      </View>
-                      <Text style={styles.wbFingerprintLabel}>
-                        Log in with password first to enable fingerprint
-                      </Text>
+{/* Fingerprint - Always pressable for debugging */}
+                  <Pressable
+                    onPress={() => {
+                      console.log("=== FINGERPRINT PRESSED ===");
+                      console.log("biometric state:", {
+                        isSupported: biometric.isSupported,
+                        isEnrolled: biometric.isEnrolled,
+                        isEnabled: biometric.isEnabled,
+                        biometricType: biometric.biometricType,
+                        canShowBiometric,
+                      });
+                      Alert.alert(
+                        "Biometric Debug",
+                        `Supported: ${biometric.isSupported}\nEnrolled: ${biometric.isEnrolled}\nEnabled: ${biometric.isEnabled}\nType: ${biometric.biometricType}`,
+                        [
+                          { text: "OK" },
+                          { text: "Re-check", onPress: () => biometric.checkAvailability() },
+                        ]
+                      );
+                      if (canShowBiometric) {
+                        handleBiometricLogin();
+                      }
+                    }}
+                    style={({ pressed }) => [
+                      styles.wbFingerprintWrap,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                    hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+                    android_disableSound
+                  >
+                    <View style={[
+                      styles.wbFingerprintCircle,
+                      !canShowBiometric && { backgroundColor: "#f1f5f9" },
+                    ]}>
+                      <Ionicons
+                        name="finger-print"
+                        size={36}
+                        color={canShowBiometric ? "#1e293b" : "#94a3b8"}
+                      />
                     </View>
-                  ) : (
-                  <View style={styles.wbFingerprintWrap}>
-                    <View style={[styles.wbFingerprintCircle, { backgroundColor: "#f1f5f9" }]}>
-                      <Ionicons name="finger-print" size={36} color="#94a3b8" />
-</View>
-                  <Text style={styles.wbFingerprintLabel}>Use Fingerprint</Text>
-                  </View>
-                )}
+                    <Text style={styles.wbFingerprintLabel}>
+                      {canShowBiometric
+                        ? "Scan Your Fingerprint"
+                        : biometric.isSupported && biometric.isEnrolled && !biometric.isEnabled
+                        ? "Log in with password first to enable fingerprint"
+                        : biometric.isSupported && !biometric.isEnrolled
+                        ? "No fingerprint enrolled in system settings"
+                        : "Biometric not supported on this device"}
+                    </Text>
+                  </Pressable>
 
                 {/* Password Input */}
                 <View style={styles.wbPasswordField}>
