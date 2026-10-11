@@ -197,8 +197,11 @@ export default function LoginScreen({ navigation }) {
   useEffect(() => { if (otpCode.every((c) => c !== "") && otpStep && !otpLoading) handleVerifyOtp(); }, [otpCode]);
 
   const handleBiometricLogin = async () => {
+    console.log("handleBiometricLogin called");
+    console.log("biometric state:", { isSupported: biometric.isSupported, isEnrolled: biometric.isEnrolled, isEnabled: biometric.isEnabled });
     try {
       const result = await biometric.authenticate();
+      console.log("biometric authenticate result:", result);
       if (!result.success) {
         if (result.error !== "user_cancel" && result.error !== "system_cancel") {
           Toast.show({ type: "error", text1: result.message || "Biometric failed. Enter your password." });
@@ -208,6 +211,7 @@ export default function LoginScreen({ navigation }) {
       // Always use lastUser.identifier on welcome-back screen, not the stored identifier
       // (stored credentials may be from a different/previous account)
       const id = isReturning ? lastUser?.identifier : result.identifier;
+      console.log("login with biometric id:", id);
       let deviceFingerprint = null;
       try { deviceFingerprint = await getDeviceFingerprint(); } catch {}
       const loginResult = await login(id, result.password, deviceFingerprint);
@@ -488,7 +492,7 @@ export default function LoginScreen({ navigation }) {
               contentContainerStyle={{
                 flexGrow: 1,
                 paddingVertical: 24,
-                paddingBottom: 200,
+                paddingBottom: 280,
               }}
             >
               <Animated.View
