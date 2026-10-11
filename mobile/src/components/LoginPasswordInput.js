@@ -117,11 +117,13 @@ export function LoginPasswordInput({
           { opacity: value.length > 0 ? 1 : 0.6 },
         ]}
       >
-        {value.length === 0
-          ? "Minimum 8 digits"
-          : value.length < MIN_LENGTH
-          ? `${value.length} / ${MIN_LENGTH} digits`
-          : "\u2713 Password ready"}
+        <Text style={styles.hintText}>
+          {value.length === 0
+            ? "Minimum 8 digits"
+            : value.length < MIN_LENGTH
+            ? `${value.length} / ${MIN_LENGTH} digits`
+            : "\u2713 Password ready"}
+        </Text>
       </Animated.View>
 
       <TouchableOpacity
@@ -193,6 +195,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 4,
     paddingHorizontal: 4,
+  },
+  hintText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: COLORS.subtle,
   },
   actionBtn: {
     marginTop: 20,
