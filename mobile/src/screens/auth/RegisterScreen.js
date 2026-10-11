@@ -435,6 +435,7 @@ export default function RegisterScreen({ navigation }) {
 
           {step === 1 && (
             <ScrollView
+              style={{ flex: 1 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -461,6 +462,7 @@ export default function RegisterScreen({ navigation }) {
 
           {step === 2 && (
             <ScrollView
+              style={{ flex: 1 }}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
@@ -767,7 +769,6 @@ const styles = StyleSheet.create({
 
   /* ── Keyboard Step ──────────────────────────────────────── */
   keyboardStep: {
-    flex: 1,
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 8,
