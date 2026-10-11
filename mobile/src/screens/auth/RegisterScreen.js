@@ -457,6 +457,7 @@ export default function RegisterScreen({ navigation }) {
                   forceOpenKey={forceOpenKey}
                 />
               </View>
+            <View style={styles.keyboardSpacer} />
             </ScrollView>
           )}
 
@@ -484,6 +485,7 @@ export default function RegisterScreen({ navigation }) {
                   forceOpenKey={forceOpenKey}
                 />
               </View>
+              <View style={styles.keyboardSpacer} />
             </ScrollView>
           )}
         </Animated.View>
@@ -773,6 +775,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 160,
+  },
+  keyboardSpacer: {
+    flex: 1,
+    minHeight: 200,
   },
   passwordCard: {
     width: "100%",
