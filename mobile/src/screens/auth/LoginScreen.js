@@ -131,7 +131,12 @@ export default function LoginScreen({ navigation }) {
         return;
       }
       if (biometric.isSupported && biometric.isEnrolled) {
-        await biometric.saveCredentials(loginId, loginPw);
+        try {
+          await biometric.saveCredentials(loginId, loginPw);
+          console.log("Biometric credentials saved");
+        } catch (e) {
+          console.error("Failed to save biometric credentials:", e);
+        }
       }
       Toast.show({ type: "success", text1: `Welcome back, ${firstName || loginId}! \uD83D\uDC4B` });
     } catch (err) {
@@ -483,7 +488,7 @@ export default function LoginScreen({ navigation }) {
               contentContainerStyle={{
                 flexGrow: 1,
                 paddingVertical: 24,
-                paddingBottom: 160,
+                paddingBottom: 200,
               }}
             >
               <Animated.View
