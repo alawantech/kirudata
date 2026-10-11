@@ -22,7 +22,6 @@ export function LoginPasswordInput({
   forceOpenKey = 0,
 }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [focused, setFocused] = useState(false);
   const inputRef = useRef(null);
 
   const isValid = value.length >= MIN_LENGTH;
@@ -37,11 +36,11 @@ export function LoginPasswordInput({
 
   return (
     <View style={styles.wrapper}>
-      <View style={[styles.inputRow, focused && styles.inputRowActive]}>
+      <View style={styles.inputRow}>
         <Ionicons
           name="lock-closed-outline"
           size={18}
-          color={focused ? COLORS.primary : COLORS.subtle}
+          color={COLORS.primary}
           style={styles.icon}
         />
         <TextInput
@@ -60,8 +59,6 @@ export function LoginPasswordInput({
           textContentType="none"
           importantForAutofill="no"
           blurOnSubmit={false}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
           returnKeyType="done"
           onSubmitEditing={onAction}
         />
@@ -119,11 +116,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     borderWidth: 1.5,
     borderColor: COLORS.border,
-  },
-  inputRowActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: "#fff",
-    ...SHADOW.sm,
   },
   icon: { marginRight: 10 },
   input: {

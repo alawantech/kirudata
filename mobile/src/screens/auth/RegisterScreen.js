@@ -228,7 +228,7 @@ export default function RegisterScreen({ navigation }) {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={insets.top + 56}
+        keyboardVerticalOffset={insets.top}
       >
         {/* ── Step Indicator ── */}
         <View style={styles.stepRow}>
@@ -766,7 +766,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 8,
-    justifyContent: "center",
   },
   keyboardHeader: {
     marginBottom: 16,
