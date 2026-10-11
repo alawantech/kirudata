@@ -47,7 +47,7 @@ const LOGO_CACHE_KEY = "cached_logo_url";
 const LOCAL_LOGO = require("../../../assets/logo-kiru.png");
 
 export default function LoginScreen({ navigation }) {
-  const { login, lastUser, clearLastUser, completeOtpLogin } = useAuth();
+  const { login, lastUser, clearLastUser, completeOtpLogin, logout } = useAuth();
   const insets = useSafeAreaInsets();
   const biometric = useBiometric();
 
@@ -217,8 +217,7 @@ export default function LoginScreen({ navigation }) {
   };
 
   const handleNotYou = async () => {
-    await clearLastUser(); setPassword(""); setIdentifier(""); setLoginStep("identifier");
-    slideAnim.setValue(0); fadeAnim.setValue(1);
+    await logout();
   };
 
 
@@ -483,8 +482,8 @@ export default function LoginScreen({ navigation }) {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{
                 flexGrow: 1,
-                justifyContent: "center",
                 paddingVertical: 24,
+                paddingBottom: 160,
               }}
             >
               <Animated.View
