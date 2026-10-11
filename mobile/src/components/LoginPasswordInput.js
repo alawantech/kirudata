@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS, RADIUS, SHADOW } from "../constants/theme";
@@ -22,7 +23,9 @@ export function LoginPasswordInput({
   forceOpenKey = 0,
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef(null);
+  const borderAnim = useRef(new Animated.Value(0)).current;
 
   const isValid = value.length >= MIN_LENGTH;
 
@@ -34,22 +37,53 @@ export function LoginPasswordInput({
     }
   }, [autoFocus, forceOpenKey]);
 
+  useEffect(() => {
+    Animated.timing(borderAnim, {
+      toValue: focused ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [focused]);
+
+  const borderColor = borderAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [COLORS.border, COLORS.primary],
+  });
+
+  const bgColor = borderAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [COLORS.surface, "#fff"],
+  });
+
   return (
     <View style={styles.wrapper}>
-      <View style={styles.inputRow}>
-        <Ionicons
-          name="lock-closed-outline"
-          size={18}
-          color={COLORS.primary}
-          style={styles.icon}
-        />
+      <Animated.View
+        style={[
+          styles.inputRow,
+          { borderColor, backgroundColor: bgColor },
+          focused && styles.inputRowActive,
+        ]}
+      >
+        <Animated.View
+          style={[
+            styles.iconWrapper,
+            { backgroundColor: focused ? "#eff6ff" : COLORS.surface },
+          ]}
+        >
+          <Ionicons
+            name="lock-closed-outline"
+            size={20}
+            color={focused ? COLORS.primary : COLORS.subtle}
+            style={styles.icon}
+          />
+        </Animated.View>
         <TextInput
           ref={inputRef}
           style={styles.input}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="#a1a1aa"
+          placeholderTextColor={COLORS.subtle}
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
@@ -59,29 +93,36 @@ export function LoginPasswordInput({
           textContentType="none"
           importantForAutofill="no"
           blurOnSubmit={false}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           returnKeyType="done"
           onSubmitEditing={onAction}
         />
         <TouchableOpacity
           onPress={() => setShowPassword((v) => !v)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={styles.eyeBtn}
         >
           <Ionicons
             name={showPassword ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color={COLORS.subtle}
+            size={22}
+            color={focused ? COLORS.primary : COLORS.subtle}
           />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      <Text style={styles.hint}>
+      <Animated.View
+        style={[
+          styles.hint,
+          { opacity: value.length > 0 ? 1 : 0.6 },
+        ]}
+      >
         {value.length === 0
-          ? "Minimum 8 characters"
+          ? "Minimum 8 digits"
           : value.length < MIN_LENGTH
-          ? `${value.length} / ${MIN_LENGTH} characters`
+          ? `${value.length} / ${MIN_LENGTH} digits`
           : "\u2713 Password ready"}
-      </Text>
+      </Animated.View>
 
       <TouchableOpacity
         onPress={onAction}
@@ -89,8 +130,9 @@ export function LoginPasswordInput({
         style={[
           styles.actionBtn,
           (actionLoading || !isValid) && styles.actionBtnDisabled,
+          isValid && styles.actionBtnReady,
         ]}
-        activeOpacity={0.85}
+        activeOpacity={0.9}
       >
         {actionLoading ? (
           <View style={styles.loadingRow}>
@@ -110,56 +152,86 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    height: 54,
+    paddingHorizontal: 4,
+    height: 58,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: COLORS.border,
   },
-  icon: { marginRight: 10 },
+  inputRowActive: {
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  iconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  icon: { marginRight: 0 },
   input: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: 17,
+    fontWeight: "600",
     color: COLORS.black,
-    paddingVertical: 14,
+    letterSpacing: 2,
+    paddingVertical: 0,
     paddingHorizontal: 0,
   },
-  eyeBtn: { marginLeft: 8, padding: 4 },
+  eyeBtn: { marginLeft: 8, padding: 8 },
   hint: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: "500",
     color: COLORS.subtle,
-    marginTop: 6,
-    marginBottom: 0,
+    marginTop: 10,
+    marginBottom: 4,
     paddingHorizontal: 4,
   },
   actionBtn: {
-    marginTop: 14,
-    paddingVertical: 15,
+    marginTop: 20,
+    paddingVertical: 16,
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  actionBtnDisabled: { opacity: 0.5 },
+  actionBtnDisabled: {
+    opacity: 0.5,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  actionBtnReady: {
+    backgroundColor: "#0ea5e9",
+  },
   actionText: {
     fontSize: 16,
     fontWeight: "800",
     color: "#fff",
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   spinner: {
-    width: 18,
-    height: 18,
-    borderWidth: 2,
+    width: 20,
+    height: 20,
+    borderWidth: 2.5,
     borderColor: "rgba(255,255,255,.3)",
     borderTopColor: "#fff",
-    borderRadius: 9,
+    borderRadius: 10,
   },
 });

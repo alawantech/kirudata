@@ -440,20 +440,22 @@ export default function RegisterScreen({ navigation }) {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.keyboardStep}
             >
-              <View style={styles.keyboardHeader}>
-                <Text style={styles.heading}>Set Your Password</Text>
-                <Text style={styles.sub}>
-                  Create an 8-digit numeric password for your account
-                </Text>
+              <View style={styles.passwordCard}>
+                <View style={styles.keyboardHeader}>
+                  <Text style={styles.cardTitle}>Set Your Password</Text>
+                  <Text style={styles.cardSubtitle}>
+                    Create an 8-digit numeric password for your account
+                  </Text>
+                </View>
+                <LoginPasswordInput
+                  value={password}
+                  onChangeText={setPassword}
+                  onAction={handlePasswordSubmit}
+                  actionLabel="Continue"
+                  actionLoading={loading}
+                  forceOpenKey={forceOpenKey}
+                />
               </View>
-              <LoginPasswordInput
-                value={password}
-                onChangeText={setPassword}
-                onAction={handlePasswordSubmit}
-                actionLabel="Continue"
-                actionLoading={loading}
-                forceOpenKey={forceOpenKey}
-              />
             </ScrollView>
           )}
 
@@ -464,20 +466,22 @@ export default function RegisterScreen({ navigation }) {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.keyboardStep}
             >
-              <View style={styles.keyboardHeader}>
-                <Text style={styles.heading}>Confirm Your Password</Text>
-                <Text style={styles.sub}>
-                  Re-enter your 8-digit password to confirm
-                </Text>
+              <View style={styles.passwordCard}>
+                <View style={styles.keyboardHeader}>
+                  <Text style={styles.cardTitle}>Confirm Your Password</Text>
+                  <Text style={styles.cardSubtitle}>
+                    Re-enter your 8-digit password to confirm
+                  </Text>
+                </View>
+                <LoginPasswordInput
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  onAction={handleConfirmSubmit}
+                  actionLabel="Create Account"
+                  actionLoading={loading}
+                  forceOpenKey={forceOpenKey}
+                />
               </View>
-              <LoginPasswordInput
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                onAction={handleConfirmSubmit}
-                actionLabel="Create Account"
-                actionLoading={loading}
-                forceOpenKey={forceOpenKey}
-              />
             </ScrollView>
           )}
         </Animated.View>
@@ -766,9 +770,39 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 8,
+    paddingBottom: 40,
+  },
+  passwordCard: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 28,
+    paddingTop: 24,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
   },
   keyboardHeader: {
-    marginBottom: 16,
+    marginBottom: 28,
     alignItems: "center",
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#0f172a",
+    letterSpacing: -0.3,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 22,
   },
 });
