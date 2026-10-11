@@ -16,6 +16,7 @@ import {
   Keyboard,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -445,6 +446,7 @@ export default function LoginScreen({ navigation }) {
   );
 
   const canShowBiometric = isReturning && biometric.isSupported && biometric.isEnrolled && biometric.isEnabled;
+console.log("=== RENDER: canShowBiometric ===", canShowBiometric, { isReturning, isSupported: biometric.isSupported, isEnrolled: biometric.isEnrolled, isEnabled: biometric.isEnabled });
 
   const Logo = ({ size = 140, style }) => (
     <Image
@@ -515,25 +517,29 @@ export default function LoginScreen({ navigation }) {
 
                 {/* Fingerprint */}
 {canShowBiometric ? (
-                    <TouchableOpacity 
+                    <Pressable
                       onPress={() => {
-                        console.log("=== FINGERPRINT BUTTON PRESSED ===");
+                        console.log("=== FINGERPRESS PRESSED ===");
                         console.log("canShowBiometric:", canShowBiometric);
                         console.log("biometric.isSupported:", biometric.isSupported);
                         console.log("biometric.isEnrolled:", biometric.isEnrolled);
                         console.log("biometric.isEnabled:", biometric.isEnabled);
                         Alert.alert("Test", "Fingerprint button pressed!");
                         handleBiometricLogin();
-                      }} 
-                      style={styles.wbFingerprintWrap} 
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
-                    <View style={styles.wbFingerprintCircle}>
-                      <Ionicons name="finger-print" size={36} color="#1e293b" />
-                    </View>
-                    <Text style={styles.wbFingerprintLabel}>Scan Your Fingerprint</Text>
-                  </TouchableOpacity>
-                ) : (
+                      }}
+                      style={({ pressed }) => [
+                        styles.wbFingerprintWrap,
+                        pressed && { opacity: 0.5 },
+                      ]}
+                      hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                      android_disableSound
+                    >
+                      <View style={styles.wbFingerprintCircle}>
+                        <Ionicons name="finger-print" size={36} color="#1e293b" />
+                      </View>
+                      <Text style={styles.wbFingerprintLabel}>Scan Your Fingerprint</Text>
+                    </Pressable>
+                  ) : (
                   <View style={styles.wbFingerprintWrap}>
                     <View style={[styles.wbFingerprintCircle, { backgroundColor: "#f1f5f9" }]}>
                       <Ionicons name="finger-print" size={36} color="#94a3b8" />
