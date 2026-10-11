@@ -18,7 +18,7 @@ export function LoginPasswordInput({
   onAction,
   actionLabel = "Continue",
   actionLoading = false,
-  placeholder = "Enter your password",
+  placeholder = "Enter password",
   autoFocus = false,
   forceOpenKey = 0,
 }) {
@@ -87,10 +87,9 @@ export function LoginPasswordInput({
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
-          minLength={MIN_LENGTH}
           autoFocus={autoFocus}
-          keyboardType="numeric"
-          textContentType="none"
+          keyboardType="default"
+          textContentType="newPassword"
           importantForAutofill="no"
           blurOnSubmit={false}
           onFocus={() => setFocused(true)}
@@ -183,7 +182,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "600",
     color: COLORS.black,
-    letterSpacing: 2,
     paddingVertical: 0,
     paddingHorizontal: 0,
   },

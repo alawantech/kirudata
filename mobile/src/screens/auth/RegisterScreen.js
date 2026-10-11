@@ -444,7 +444,7 @@ export default function RegisterScreen({ navigation }) {
                 <View style={styles.keyboardHeader}>
                   <Text style={styles.cardTitle}>Set Your Password</Text>
                   <Text style={styles.cardSubtitle}>
-                    Create an 8-digit numeric password for your account
+                    Create password for your account
                   </Text>
                 </View>
                 <LoginPasswordInput
@@ -470,7 +470,7 @@ export default function RegisterScreen({ navigation }) {
                 <View style={styles.keyboardHeader}>
                   <Text style={styles.cardTitle}>Confirm Your Password</Text>
                   <Text style={styles.cardSubtitle}>
-                    Re-enter your 8-digit password to confirm
+                    Re-enter your password to confirm
                   </Text>
                 </View>
                 <LoginPasswordInput
@@ -768,6 +768,7 @@ const styles = StyleSheet.create({
   /* ── Keyboard Step ──────────────────────────────────────── */
   keyboardStep: {
     flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 40,
