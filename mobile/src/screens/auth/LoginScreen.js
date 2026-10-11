@@ -492,7 +492,7 @@ export default function LoginScreen({ navigation }) {
               contentContainerStyle={{
                 flexGrow: 1,
                 paddingVertical: 24,
-                paddingBottom: 280,
+                paddingBottom: 340,
               }}
             >
               <Animated.View
