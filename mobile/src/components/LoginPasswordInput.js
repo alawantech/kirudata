@@ -47,7 +47,7 @@ export function LoginPasswordInput({
           autoCorrect={false}
           minLength={MIN_LENGTH}
           autoFocus={autoFocus}
-          keyboardType="default"
+          keyboardType="numeric"
           textContentType="none"
           importantForAutofill="no"
           blurOnSubmit={false}

@@ -227,7 +227,7 @@ export default function RegisterScreen({ navigation }) {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={insets.top + 56}
       >
         {/* ── Step Indicator ── */}
@@ -434,43 +434,51 @@ export default function RegisterScreen({ navigation }) {
           )}
 
           {step === 1 && (
-            <View style={styles.keyboardStep}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.keyboardStep}
+            >
               <View style={styles.keyboardHeader}>
                 <Text style={styles.heading}>Set Your Password</Text>
                 <Text style={styles.sub}>
                   Create an 8-digit numeric password for your account
                 </Text>
               </View>
-            <LoginPasswordInput
-              value={password}
-              onChangeText={setPassword}
-              onAction={handlePasswordSubmit}
-              actionLabel="Continue"
-              actionLoading={loading}
-              autoOpen
-              forceOpen={forceOpenKey}
-            />
-            </View>
+              <LoginPasswordInput
+                value={password}
+                onChangeText={setPassword}
+                onAction={handlePasswordSubmit}
+                actionLabel="Continue"
+                actionLoading={loading}
+                autoFocus
+              />
+            </ScrollView>
           )}
 
           {step === 2 && (
-            <View style={styles.keyboardStep}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.keyboardStep}
+            >
               <View style={styles.keyboardHeader}>
                 <Text style={styles.heading}>Confirm Your Password</Text>
                 <Text style={styles.sub}>
                   Re-enter your 8-digit password to confirm
                 </Text>
               </View>
-            <LoginPasswordInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              onAction={handleConfirmSubmit}
-              actionLabel="Create Account"
-              actionLoading={loading}
-              autoOpen
-              forceOpen={forceOpenKey}
-            />
-            </View>
+              <LoginPasswordInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                onAction={handleConfirmSubmit}
+                actionLabel="Create Account"
+                actionLoading={loading}
+                autoFocus
+              />
+            </ScrollView>
           )}
         </Animated.View>
       </KeyboardAvoidingView>
