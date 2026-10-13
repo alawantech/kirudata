@@ -53,6 +53,12 @@
         "projectId": "ff5e6b07-f55a-4814-9db7-1446b013d7d6"
       }
     },
-    "owner": "kiru-data"
+    "owner": "kiru-data",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ff5e6b07-f55a-4814-9db7-1446b013d7d6"
+    }
   }
 }
