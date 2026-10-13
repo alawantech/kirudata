@@ -130,15 +130,9 @@ export default function LoginScreen({ navigation }) {
         Toast.show({ type: "info", text1: "Verification code sent to your email" });
         return;
       }
-      if (biometric.isSupported && biometric.isEnrolled) {
-        try {
-          await biometric.saveCredentials(loginId, loginPw);
-          console.log("Biometric credentials saved");
-          // Refresh biometric state after saving credentials
-          await biometric.checkAvailability();
-        } catch (e) {
-          console.error("Failed to save biometric credentials:", e);
-        }
+      if (biometric.isSupported) {
+        await biometric.saveCredentials(loginId, loginPw);
+        await biometric.checkAvailability();
       }
       Toast.show({ type: "success", text1: `Welcome back, ${firstName || loginId}! \uD83D\uDC4B` });
     } catch (err) {
@@ -199,21 +193,24 @@ export default function LoginScreen({ navigation }) {
   useEffect(() => { if (otpCode.every((c) => c !== "") && otpStep && !otpLoading) handleVerifyOtp(); }, [otpCode]);
 
 const handleBiometricLogin = async () => {
-    console.log("handleBiometricLogin called");
-    console.log("biometric state:", { isSupported: biometric.isSupported, isEnrolled: biometric.isEnrolled, isEnabled: biometric.isEnabled });
     try {
       const result = await biometric.authenticate();
-      console.log("biometric authenticate result:", result);
       if (!result.success) {
-        if (result.error !== "user_cancel" && result.error !== "system_cancel") {
+        if (result.error === "not_enrolled") {
+          Toast.show({ type: "error", text1: "Fingerprint not available. Please use your password." });
+        } else if (result.error !== "user_cancel" && result.error !== "system_cancel") {
           Toast.show({ type: "error", text1: String(result.message || "Biometric failed. Enter your password.") });
         }
         return;
       }
-      // Always use lastUser.identifier on welcome-back screen, not the stored identifier
-      // (stored credentials may be from a different/previous account)
-      const id = isReturning ? lastUser?.identifier : result.identifier;
-      console.log("login with biometric id:", id);
+      // Stored credentials may belong to a previous account — never reuse them
+      // against a different identifier (the password would be wrong anyway).
+      if (lastUser?.identifier && result.identifier !== lastUser.identifier) {
+        await biometric.disableBiometric();
+        Toast.show({ type: "error", text1: "Fingerprint is linked to another account. Please use your password." });
+        return;
+      }
+      const id = isReturning ? lastUser.identifier : result.identifier;
       let deviceFingerprint = null;
       try { deviceFingerprint = await getDeviceFingerprint(); } catch {}
       const loginResult = await login(id, result.password, deviceFingerprint);
@@ -445,25 +442,16 @@ const handleBiometricLogin = async () => {
     </>
   );
 
-  const canShowBiometric = isReturning && biometric.isSupported && biometric.isEnrolled && biometric.isEnabled;
+  // Enrollment is intentionally NOT required here: the system prompt is the
+  // authority on whether a scan can succeed, and isEnrolledAsync() can report
+  // false even on devices that authenticate fine. Saved credentials are what
+  // we actually need to be able to log the user in after a successful scan.
+  const canShowBiometric = isReturning && biometric.isSupported && biometric.isEnabled;
 
   // Refresh biometric state when welcome-back screen shows
   useEffect(() => {
-    if (isReturning) {
-      console.log("Welcome-back screen mounted, refreshing biometric state...");
-      biometric.checkAvailability();
-    }
+    if (isReturning) biometric.checkAvailability();
   }, [isReturning]);
-
-  // Debug: Log biometric state on every render
-  console.log("=== BIOMETRIC STATE ===", {
-    isReturning,
-    isSupported: biometric.isSupported,
-    isEnrolled: biometric.isEnrolled,
-    isEnabled: biometric.isEnabled,
-    canShowBiometric,
-    biometricType: biometric.biometricType,
-  });
 
   const Logo = ({ size = 140, style }) => (
     <Image
@@ -544,7 +532,7 @@ const handleBiometricLogin = async () => {
                       </View>
                       <Text style={styles.wbFingerprintLabel}>Scan Your Fingerprint</Text>
                     </TouchableOpacity>
-                  ) : biometric.isSupported && biometric.isEnrolled && !biometric.isEnabled ? (
+                  ) : biometric.isSupported && !biometric.isEnabled ? (
                     <View style={styles.wbFingerprintWrap}>
                       <View style={[styles.wbFingerprintCircle, { backgroundColor: "#f1f5f9" }]}>
                         <Ionicons name="finger-print" size={36} color="#94a3b8" />
@@ -553,16 +541,7 @@ const handleBiometricLogin = async () => {
                         Log in with password first to enable fingerprint
                       </Text>
                     </View>
-                  ) : (
-                    <View style={styles.wbFingerprintWrap}>
-                      <View style={[styles.wbFingerprintCircle, { backgroundColor: "#f1f5f9" }]}>
-                        <Ionicons name="finger-print" size={36} color="#94a3b8" />
-                      </View>
-                      <Text style={styles.wbFingerprintLabel}>
-                        No fingerprint enrolled in system settings
-                      </Text>
-                    </View>
-                  )}
+                  ) : null}
 
                 {/* Password Input */}
                 <View style={styles.wbPasswordField}>

@@ -18,7 +18,16 @@ export function useBiometric() {
   const checkAvailability = async () => {
     try {
       const compatible = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      let enrolled = await LocalAuthentication.isEnrolledAsync();
+
+      // BiometricManager.canAuthenticate() can transiently report "not enrolled"
+      // right after mount or while another biometric prompt is still detaching.
+      // Re-read once before settling on the value.
+      if (compatible && !enrolled) {
+        await new Promise((r) => setTimeout(r, 400));
+        enrolled = await LocalAuthentication.isEnrolledAsync();
+      }
+
       setIsSupported(compatible);
       setIsEnrolled(enrolled);
 
@@ -50,9 +59,13 @@ export function useBiometric() {
     }
   };
 
-  /** Call this after a successful password login to save credentials */
+  /**
+   * Persist credentials so a later fingerprint scan can sign the user in.
+   * Only hardware presence is required — enrollment is verified by the system
+   * prompt itself at scan time, so gating this on isEnrolled would permanently
+   * lock the feature out whenever the enrollment snapshot is reported late/false.
+   */
   const saveCredentials = async (identifier, password) => {
-    console.log("biometric.saveCredentials called with:", { identifier });
     try {
       await SecureStore.setItemAsync(
         BIOMETRIC_CREDENTIALS_KEY,
@@ -60,10 +73,9 @@ export function useBiometric() {
       );
       await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, "true");
       setIsEnabled(true);
-      console.log("Biometric credentials saved successfully");
       return true;
     } catch (e) {
-      console.error("Failed to save biometric credentials:", e);
+      console.warn("Failed to save biometric credentials:", e);
       return false;
     }
   };
@@ -85,7 +97,6 @@ export function useBiometric() {
    * Returns { success: true, identifier, password } on success, or { success: false, error }
    */
   const authenticate = useCallback(async () => {
-    console.log("biometric.authenticate called");
     try {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: "Verify your identity",
@@ -93,17 +104,13 @@ export function useBiometric() {
         cancelLabel: "Cancel",
         disableDeviceFallback: true,
       });
-      console.log("LocalAuthentication.authenticateAsync result:", result);
 
       if (!result.success) {
-        console.log("Biometric authentication failed:", result.error);
         return { success: false, error: result.error };
       }
 
       const raw = await SecureStore.getItemAsync(BIOMETRIC_CREDENTIALS_KEY);
-      console.log("SecureStore BIOMETRIC_CREDENTIALS_KEY raw:", raw);
       if (!raw) {
-        console.log("No biometric credentials found in SecureStore");
         return {
           success: false,
           error: "no_credentials",
@@ -112,10 +119,8 @@ export function useBiometric() {
       }
 
       const { identifier, password } = JSON.parse(raw);
-      console.log("Biometric credentials retrieved:", { identifier });
       return { success: true, identifier, password };
     } catch (err) {
-      console.error("Biometric authenticate error:", err);
       return { success: false, error: "unknown", message: err.message };
     }
   }, []);
