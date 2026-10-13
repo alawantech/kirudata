@@ -47,13 +47,22 @@ function useTxBiometric() {
 
   const triggerBio = useCallback(async () => {
     try {
-      // If no PIN has been saved yet, guide the user
+      const { Alert } = require("react-native");
       const stored = await SecureStore.getItemAsync(TX_PIN_KEY);
+
+      // The fingerprint button is always visible — a first-time user is told
+      // to enter their PIN once before it can be enabled.
       if (!stored) {
-        const { Alert } = require("react-native");
         Alert.alert(
-          "Set up biometric shortcut",
-          "Enter your PIN once manually and it will be saved for future biometric logins.",
+          "Fingerprint not enabled yet",
+          "Enter your transaction PIN once first. After that you can confirm payments with your fingerprint.",
+        );
+        return null;
+      }
+      if (!ready) {
+        Alert.alert(
+          "Fingerprint not available",
+          "No fingerprint is set up on this device. Enter your transaction PIN instead.",
         );
         return null;
       }
@@ -68,7 +77,7 @@ function useTxBiometric() {
     } catch {
       return null;
     }
-  }, []);
+  }, [ready]);
 
   return { ready, icon, triggerBio };
 }
@@ -76,8 +85,9 @@ function useTxBiometric() {
 /**
  * Bottom-sheet modal for transaction PIN entry.
  * 4-dot display + custom keypad.
- * The slot left of 0 shows a biometric button (fingerprint/face) once the user
- * has completed one manual PIN entry — no typing needed after that.
+ * The slot left of 0 ALWAYS shows a fingerprint button. If the user has not
+ * entered their transaction PIN yet, tapping it explains that the PIN must be
+ * used once first before fingerprint login can be enabled.
  */
 export function TransactionPinModal({
   visible,
@@ -166,20 +176,17 @@ export function TransactionPinModal({
                 {row.map((key, ki) => {
                   const isBio = key === "bio";
                   const isBack = key === "back";
-                  const isHidden = isBio && !bio.ready;
 
                   return (
                     <TouchableOpacity
                       key={ki}
                       onPress={() => handleKey(key)}
-                      disabled={isHidden}
                       style={[
                         styles.key,
-                        isHidden && styles.keyInvisible,
                         isBack && styles.keyBack,
-                        isBio && bio.ready && styles.keyBio,
+                        isBio && styles.keyBio,
                       ]}
-                      activeOpacity={isHidden ? 1 : 0.45}
+                      activeOpacity={0.45}
                     >
                       {isBack ? (
                         <Ionicons
@@ -187,15 +194,15 @@ export function TransactionPinModal({
                           size={24}
                           color={COLORS.danger}
                         />
-                      ) : isBio && bio.ready ? (
+                      ) : isBio ? (
                         <Ionicons
                           name={bio.icon}
                           size={28}
                           color={COLORS.primary}
                         />
-                      ) : !isBio ? (
+                      ) : (
                         <Text style={styles.keyText}>{key}</Text>
-                      ) : null}
+                      )}
                     </TouchableOpacity>
                   );
                 })}
@@ -306,7 +313,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  keyInvisible: { backgroundColor: "transparent", borderWidth: 0 },
   keyBack: { backgroundColor: "#fff1f2", borderColor: "#fecdd3" },
   keyBio: {
     backgroundColor: "#eef2ff",

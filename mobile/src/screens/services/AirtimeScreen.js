@@ -20,8 +20,8 @@ import { Button } from "../../components/Button";
 import { Card, SectionHeader } from "../../components/Card";
 import { Header } from "../../components/Header";
 import { TransactionPinModal } from "../../components/TransactionPinModal";
+import { NetworkSelector } from "../../components/NetworkSelector";
 import { COLORS, RADIUS } from "../../constants/theme";
-import NetworkLogo from "../../components/NetworkLogo";
 import { fetchWithCache, TTL } from "../../utils/cache";
 
 export default function AirtimeScreen({ navigation }) {
@@ -139,36 +139,7 @@ export default function AirtimeScreen({ navigation }) {
                 <Text style={{ marginTop: 8, color: COLORS.body, fontSize: 13 }}>Loading networks…</Text>
               </View>
             ) : (
-            <View style={styles.networkRow}>
-              {networks.map((n) => {
-                const isActive = network === n.id;
-                return (
-                  <TouchableOpacity
-                    key={n.id}
-                    onPress={() => setNetwork(n.id)}
-                    style={[
-                      styles.networkPill,
-                      {
-                        backgroundColor: isActive ? COLORS.primary + "10" : COLORS.white,
-                        borderColor: isActive ? COLORS.primary : COLORS.border,
-                      },
-                    ]}
-                  >
-                    <NetworkLogo name={n.name} size={36} />
-                    <Text style={[styles.networkLabel, { color: isActive ? COLORS.primary : COLORS.body }]}>
-                      {n.name}
-                    </Text>
-                    {isActive && (
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={14}
-                        color={COLORS.primary}
-                      />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <NetworkSelector networks={networks} value={network} onChange={setNetwork} />
             )}
           </Card>
 
@@ -302,18 +273,6 @@ export default function AirtimeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  networkRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  networkPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: RADIUS.full,
-    borderWidth: 2,
-    gap: 6,
-  },
-  networkDot: { width: 8, height: 8, borderRadius: 4 },
-  networkLabel: { fontSize: 13, fontWeight: "800" },
   quickRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
   quickChip: {
     paddingHorizontal: 14,
