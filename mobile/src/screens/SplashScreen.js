@@ -14,6 +14,7 @@ const BAR_WIDTH = 168;
 const BAR_HEIGHT = 4;
 const SPLASH_DURATION = 1800;
 const LOGO_CACHE_KEY = "cached_logo_url";
+const ONBOARDED_KEY = "onboarded";
 const LOCAL_LOGO = require("../../assets/logo-kiru.png");
 const LOGO_W = 250;
 const LOGO_H = 77;
@@ -35,6 +36,9 @@ export default function SplashScreen({ navigation }) {
   });
 
   useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+
     const normaliseUrl = (url) => {
       if (!url) return null;
       if (/^https?:\/\//i.test(url)) return url;
@@ -61,15 +65,30 @@ export default function SplashScreen({ navigation }) {
       easing: Easing.linear,
       useNativeDriver: false,
     }).start();
-    const timer = setTimeout(() => {
-      Animated.timing(fadeOut, {
-        toValue: 0,
-        duration: 280,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }).start(() => navigation.replace(lastUser ? "Login" : "Welcome"));
-    }, SPLASH_DURATION);
-    return () => clearTimeout(timer);
+
+    (async () => {
+      // Known account -> Welcome Back (Login). Otherwise, if any account has
+      // ever been used on this device (including after an explicit Logout),
+      // skip the first-run onboarding carousel and go straight to Login.
+      let target = lastUser ? "Login" : "Welcome";
+      try {
+        if ((await AsyncStorage.getItem(ONBOARDED_KEY)) === "true") target = "Login";
+      } catch {}
+      if (cancelled) return;
+      timer = setTimeout(() => {
+        Animated.timing(fadeOut, {
+          toValue: 0,
+          duration: 280,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }).start(() => navigation.replace(target));
+      }, SPLASH_DURATION);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   if (!fontsLoaded) return null;

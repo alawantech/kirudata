@@ -10,6 +10,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import client from "../api/client";
 import { getDeviceFingerprint } from "../lib/fingerprint";
+import {
+  BIOMETRIC_ENABLED_KEY,
+  BIOMETRIC_CREDENTIALS_KEY,
+} from "../hooks/useBiometric";
 
 const AuthContext = createContext(null);
 
@@ -17,6 +21,9 @@ const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const BG_TIME_KEY = "bg_timestamp";
 const LAST_USER_KEY = "last_user";
 const CACHED_USER_KEY = "cached_user";
+// Set as soon as an account has ever been used here, so the splash can send an
+// existing user straight to Login instead of the first-run onboarding carousel.
+const ONBOARDED_KEY = "onboarded";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -184,6 +191,7 @@ export function AuthProvider({ children }) {
       identifier;
     const userInfo = { name, identifier, phone: u.phone || "" };
     await AsyncStorage.setItem(LAST_USER_KEY, JSON.stringify(userInfo));
+    await AsyncStorage.setItem(ONBOARDED_KEY, "true");
     setLastUser(userInfo);
     setToken(t);
     setUser(u);
@@ -217,13 +225,33 @@ export function AuthProvider({ children }) {
       phone: u.phone || payload.phone || "",
     };
     await AsyncStorage.setItem(LAST_USER_KEY, JSON.stringify(userInfo));
+    await AsyncStorage.setItem(ONBOARDED_KEY, "true");
     setLastUser(userInfo);
     await _cacheUser(u);
     return userId;
   };
 
+  /**
+   * EXPLICIT sign-out (profile "Logout", "Not my Account? Logout", and the
+   * automatic sign-out after a password change/reset).
+   *
+   * Unlike _clearSession — which deliberately keeps `last_user` so a locked or
+   * 30-minute-timed-out session comes back to Welcome Back — this forgets the
+   * account on this device entirely and lands on the fresh Login screen, where
+   * the user types their identifier again. The stored biometric password is
+   * dropped too, because after a password change it would be stale.
+   */
   const logout = async () => {
     await _clearSession();
+    await AsyncStorage.multiRemove([LAST_USER_KEY, CACHED_USER_KEY]);
+    setLastUser(null);
+    try {
+      await SecureStore.deleteItemAsync(BIOMETRIC_CREDENTIALS_KEY);
+      await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, "false");
+    } catch {}
+    try {
+      await AsyncStorage.setItem(ONBOARDED_KEY, "true");
+    } catch {}
   };
 
   const refreshUser = async () => {
@@ -247,6 +275,7 @@ export function AuthProvider({ children }) {
       const identifier = userData.email || userData.phone || "";
       const userInfo = { name, identifier, phone: userData.phone || "" };
       await AsyncStorage.setItem(LAST_USER_KEY, JSON.stringify(userInfo));
+      await AsyncStorage.setItem(ONBOARDED_KEY, "true");
       setLastUser(userInfo);
     } catch {}
   };

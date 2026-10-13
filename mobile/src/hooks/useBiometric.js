@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 
-const BIOMETRIC_ENABLED_KEY = "biometric_enabled";
-const BIOMETRIC_CREDENTIALS_KEY = "biometric_credentials";
+export const BIOMETRIC_ENABLED_KEY = "biometric_enabled";
+export const BIOMETRIC_CREDENTIALS_KEY = "biometric_credentials";
 
 export function useBiometric() {
   const [isSupported, setIsSupported] = useState(false);

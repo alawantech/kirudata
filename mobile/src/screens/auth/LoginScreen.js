@@ -47,7 +47,7 @@ const LOGO_CACHE_KEY = "cached_logo_url";
 const LOCAL_LOGO = require("../../../assets/logo-kiru.png");
 
 export default function LoginScreen({ navigation }) {
-  const { login, lastUser, clearLastUser, completeOtpLogin, logout } = useAuth();
+  const { login, lastUser, completeOtpLogin, logout } = useAuth();
   const insets = useSafeAreaInsets();
   const biometric = useBiometric();
 
@@ -224,8 +224,16 @@ const handleBiometricLogin = async () => {
     } catch (err) { Toast.show({ type: "error", text1: String(err?.response?.data?.msg || "Sign in failed") }); }
   };
 
+  // "Not my Account? Logout" must actually sign the user out and drop them on
+  // the empty Login form (fresh identifier + password), not stay on Welcome Back.
   const handleNotYou = async () => {
     await logout();
+    setIdentifier("");
+    setPassword("");
+    setLoginStep("identifier");
+    setOtpStep(false);
+    setOtpCode(["", "", "", "", "", ""]);
+    Toast.show({ type: "info", text1: "Logged out" });
   };
 
 
