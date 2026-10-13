@@ -20,6 +20,7 @@ import { Header } from "../../components/Header";
 import { TransactionPinModal } from "../../components/TransactionPinModal";
 import { NetworkSelector } from "../../components/NetworkSelector";
 import { ConfirmPurchaseModal } from "../../components/ConfirmPurchaseModal";
+import { UssdEnquiryRow } from "../../components/UssdEnquiryRow";
 import { COLORS, RADIUS, SHADOW } from "../../constants/theme";
 import NetworkLogo from "../../components/NetworkLogo";
 import { fetchWithCache, TTL } from "../../utils/cache";
@@ -349,6 +350,9 @@ export default function DataScreen({ navigation }) {
               )}
             </Card>
           )}
+
+          {/* USSD enquiry */}
+          <UssdEnquiryRow onPress={() => navigation.navigate("UssdCodes")} />
         </ScrollView>
       </KeyboardAvoidingView>
 

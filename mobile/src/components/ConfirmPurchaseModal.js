@@ -17,6 +17,12 @@ function formatPhone(p) {
   return p || "—";
 }
 
+const money = (n) =>
+  Number(n || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
 function Row({ label, value, logoName }) {
   return (
     <View style={styles.row}>
@@ -35,15 +41,21 @@ export function ConfirmPurchaseModal({
   visible,
   onCancel,
   onConfirm,
+  service = "data",
   plan,
   phone,
   networkName,
   dataType,
   validityLabel,
   loading,
+  airtimeAmount,
+  cost,
+  discountPct,
 }) {
-  if (!plan) return null;
-  const amount = Number(plan.userPrice || 0);
+  const isAir = service === "airtime";
+  if (isAir ? !airtimeAmount : !plan) return null;
+
+  const paid = isAir ? cost : Number(plan.userPrice || 0);
 
   return (
     <Modal
@@ -75,21 +87,43 @@ export function ConfirmPurchaseModal({
 
           <View style={styles.amountCard}>
             <Text style={styles.amountLabel}>You're paying</Text>
-            <Text style={styles.amount}>₦{amount.toLocaleString()}</Text>
+            <Text style={styles.amount}>₦{money(paid)}</Text>
             <Text style={styles.amountTo}>to {formatPhone(phone)}</Text>
           </View>
 
+          <View style={styles.netBand}>
+            <NetworkLogo name={networkName} size={22} />
+            <Text style={styles.netBandText}>{networkName}</Text>
+          </View>
+
           <View style={styles.rows}>
-            <Row label="Network" value={networkName} logoName={networkName} />
-            <Row label="Data Type" value={dataType || "—"} />
-            <Row label="Plan" value={plan.name} />
-            {validityLabel ? <Row label="Validity" value={validityLabel} /> : null}
-            <Row label="Recipient" value={formatPhone(phone)} />
+            {isAir ? (
+              <>
+                <Row label="Recipient" value={formatPhone(phone)} />
+                <Row label="Amount" value={`₦${money(airtimeAmount)}`} />
+                <Row label="Discount" value={`${Number(discountPct || 0)}%`} />
+              </>
+            ) : (
+              <>
+                <Row label="Data Type" value={dataType || "—"} />
+                <Row label="Plan" value={plan.name} />
+                {validityLabel ? <Row label="Validity" value={validityLabel} /> : null}
+                <Row label="Recipient" value={formatPhone(phone)} />
+              </>
+            )}
           </View>
 
           <View style={styles.note}>
-            <Ionicons name="checkmark-circle" size={15} color="#16a34a" />
-            <Text style={styles.noteText}>Data is delivered instantly after payment.</Text>
+            <Ionicons
+              name={isAir ? "flash" : "checkmark-circle"}
+              size={15}
+              color="#16a34a"
+            />
+            <Text style={styles.noteText}>
+              {isAir
+                ? "Airtime is delivered instantly after payment."
+                : "Data is delivered instantly after payment."}
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -140,23 +174,41 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   amountCard: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: "#0f172a",
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: "#1e293b",
     paddingVertical: 18,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  amountLabel: { fontSize: 12, color: COLORS.muted, fontWeight: "600" },
+  amountLabel: { fontSize: 12, color: "#94a3b8", fontWeight: "600" },
   amount: {
     fontSize: 34,
     fontWeight: "900",
-    color: COLORS.black,
+    color: "#fff",
     letterSpacing: -1,
     marginVertical: 2,
   },
-  amountTo: { fontSize: 13, color: COLORS.muted, fontWeight: "600" },
+  amountTo: { fontSize: 13, color: "#94a3b8", fontWeight: "600" },
+  netBand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+  },
+  netBandText: {
+    fontSize: 13.5,
+    fontWeight: "800",
+    color: COLORS.black,
+    letterSpacing: -0.2,
+  },
   rows: { marginBottom: 14 },
   row: {
     flexDirection: "row",

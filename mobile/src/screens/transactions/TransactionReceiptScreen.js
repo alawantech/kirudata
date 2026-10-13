@@ -466,6 +466,16 @@ export default function TransactionReceiptScreen({ navigation, route }) {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={[styles.actionBtn, styles.actionOutline]}
+          onPress={() => navigation.navigate("UssdCodes")}
+        >
+          <Ionicons name="keypad" size={18} color={COLORS.primary} />
+          <Text style={[styles.actionText, { color: COLORS.primary }]}>
+            Check balance with USSD
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.actionBtn, styles.actionGhost]}
           onPress={() => navigation.navigate("ServicesList")}
         >

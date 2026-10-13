@@ -37,6 +37,7 @@ import NotificationsScreen from "../screens/notifications/NotificationsScreen";
 import ChangePasswordScreen from "../screens/profile/ChangePasswordScreen";
 import ChangePinScreen from "../screens/profile/ChangePinScreen";
 import ReferralScreen from "../screens/profile/ReferralScreen";
+import UssdCodesScreen from "../screens/UssdCodesScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -86,6 +87,7 @@ function ServicesStack() {
       <Stack.Screen name="DataCard" component={DataCardScreen} />
       <Stack.Screen name="RechargeCard" component={RechargeCardScreen} />
       <Stack.Screen name="Referral" component={ReferralScreen} />
+      <Stack.Screen name="UssdCodes" component={UssdCodesScreen} />
     </Stack.Navigator>
   );
 }
@@ -107,6 +109,7 @@ function HomeStack() {
       <Stack.Screen name="RechargeCard" component={RechargeCardScreen} />
       <Stack.Screen name="FundWallet" component={FundWalletScreen} />
       <Stack.Screen name="Referral" component={ReferralScreen} />
+      <Stack.Screen name="UssdCodes" component={UssdCodesScreen} />
     </Stack.Navigator>
   );
 }
@@ -130,6 +133,7 @@ function AppStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={AppTabs} />
       <Stack.Screen name="Receipt" component={TransactionReceiptScreen} />
+      <Stack.Screen name="UssdCodes" component={UssdCodesScreen} />
     </Stack.Navigator>
   );
 }
