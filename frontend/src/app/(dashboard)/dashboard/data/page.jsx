@@ -10,6 +10,17 @@ import { useAuth } from "@/context/AuthContext";
 import { detectNetwork } from "@/lib/detectNetwork";
 import ForgotPinOverlay from "@/components/ForgotPinOverlay";
 
+// User-facing order for data types: SME first, then Corporate Gifting, then Gifting.
+// "Cooperate Gifting" is the value actually stored on the plan rows.
+const TYPE_ORDER = ["SME", "Cooperate Gifting", "Gifting"];
+const orderTypes = (types) =>
+  [...types].sort(
+    (a, b) =>
+      (TYPE_ORDER.indexOf(a) === -1 ? TYPE_ORDER.length : TYPE_ORDER.indexOf(a)) -
+      (TYPE_ORDER.indexOf(b) === -1 ? TYPE_ORDER.length : TYPE_ORDER.indexOf(b)),
+  );
+const defaultTypeFor = (types) => TYPE_ORDER.find((t) => types.includes(t)) || types[0] || "";
+
 export default function DataPage() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
@@ -47,12 +58,19 @@ export default function DataPage() {
     fetchWithCache(`data:plans:${selectedNet.id}`, TTL.PLANS, () =>
       api.get(`/data/plans?network=${selectedNet.id}`).then((r) => r.data.data?.plans || []),
     )
-      .then(setPlans)
-      .catch(() => setPlans([]))
+      .then((fetched) => {
+        setPlans(fetched);
+        // Preselect SME, else Corporate Gifting, else Gifting — whichever is available.
+        setSelectedType(defaultTypeFor([...new Set(fetched.map((p) => p.type).filter(Boolean))]));
+      })
+      .catch(() => {
+        setPlans([]);
+        setSelectedType("");
+      })
       .finally(() => setLoadingPlans(false));
   }, [selectedNet]);
 
-  const planTypes = [...new Set(plans.map((p) => p.type).filter(Boolean))];
+  const planTypes = orderTypes([...new Set(plans.map((p) => p.type).filter(Boolean))]);
   const plansForType = selectedType ? plans.filter((p) => p.type === selectedType) : [];
 
   const typeColor = {

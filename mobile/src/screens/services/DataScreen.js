@@ -31,6 +31,17 @@ function formatValidity(v) {
   return num === 1 ? "1 day" : `${num} days`;
 }
 
+// User-facing order for data types: SME first, then Corporate Gifting, then Gifting.
+// "Cooperate Gifting" is the value actually stored on the plan rows.
+const TYPE_ORDER = ["SME", "Cooperate Gifting", "Gifting"];
+const orderTypes = (types) =>
+  [...types].sort(
+    (a, b) =>
+      (TYPE_ORDER.indexOf(a) === -1 ? TYPE_ORDER.length : TYPE_ORDER.indexOf(a)) -
+      (TYPE_ORDER.indexOf(b) === -1 ? TYPE_ORDER.length : TYPE_ORDER.indexOf(b)),
+  );
+const defaultTypeFor = (types) => TYPE_ORDER.find((t) => types.includes(t)) || types[0] || null;
+
 export default function DataScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef(null);
@@ -77,8 +88,10 @@ export default function DataScreen({ navigation }) {
         // The backend already filters plans by the network's status flags
         // (sme/gifting/corporate) — derive type chips from the response exactly
         // like the web app, so every returned type (e.g. "Cooperate Gifting") shows.
-        const types = [...new Set(fetched.map((p) => p.type).filter(Boolean))];
+        const types = orderTypes([...new Set(fetched.map((p) => p.type).filter(Boolean))]);
         setAvailableTypes(types);
+        // Preselect SME, else Corporate Gifting, else Gifting — whichever is available.
+        setDataType(defaultTypeFor(types));
       })
       .catch(() => {
         setAllPlans([]);
