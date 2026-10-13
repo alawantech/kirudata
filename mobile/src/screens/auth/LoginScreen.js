@@ -571,7 +571,7 @@ const handleBiometricLogin = async () => {
                     onSubmitEditing={() => handleLogin(lastUser.identifier, password)}
                   />
                   <TouchableOpacity onPress={() => setShowWbPassword((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Text style={styles.wbShowToggle}>{showWbPassword ? "Hide" : "Show"}</Text>
+                    <Ionicons name={showWbPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#4f46e5" />
                   </TouchableOpacity>
                   <Text style={styles.wbInputLabel}>Password</Text>
                 </View>
@@ -810,13 +810,6 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     paddingVertical: 0,
     paddingRight: 8,
-  },
-  wbShowToggle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#4f46e5",
-    marginLeft: 8,
-    marginBottom: 2,
   },
   wbInputLabel: {
     position: "absolute",
