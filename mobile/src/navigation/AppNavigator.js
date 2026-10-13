@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS, RADIUS, SHADOW } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import client from "../api/client";
+import { useOverlay } from "../context/OverlayContext";
 
 // Auth screens
 import SplashScreen from "../screens/SplashScreen";
@@ -139,6 +140,7 @@ function AppTabs() {
   const bottomPad = insets.bottom + 10;
   const tabBarHeight = 56 + bottomPad;
   const [whatsapp, setWhatsapp] = useState(null);
+  const { bottomInset } = useOverlay();
 
   useEffect(() => {
     client
@@ -232,7 +234,7 @@ function AppTabs() {
       <TouchableOpacity
         onPress={openWhatsApp}
         activeOpacity={0.85}
-        style={[styles.whatsappBtn, { bottom: tabBarHeight + 8 }]}
+        style={[styles.whatsappBtn, { bottom: tabBarHeight + 8 + bottomInset }]}
       >
         <Ionicons name="logo-whatsapp" size={26} color="#fff" />
       </TouchableOpacity>

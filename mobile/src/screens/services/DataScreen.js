@@ -14,15 +14,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import client from "../../api/client";
-import { Input } from "../../components/Input";
-import { PhoneInput } from "../../components/PhoneInput";
-import { Button } from "../../components/Button";
+import { PhoneInput, detectNetwork } from "../../components/PhoneInput";
 import { Card, SectionHeader } from "../../components/Card";
 import { Header } from "../../components/Header";
 import { TransactionPinModal } from "../../components/TransactionPinModal";
+import { ConfirmPurchaseModal } from "../../components/ConfirmPurchaseModal";
 import { COLORS, RADIUS, SHADOW } from "../../constants/theme";
 import NetworkLogo from "../../components/NetworkLogo";
 import { fetchWithCache, TTL } from "../../utils/cache";
+import { useOverlay } from "../../context/OverlayContext";
+
+const BAR_HEIGHT = 76;
 
 function formatValidity(v) {
   if (!v) return "";
@@ -45,6 +47,7 @@ const defaultTypeFor = (types) => TYPE_ORDER.find((t) => types.includes(t)) || t
 export default function DataScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef(null);
+  const { setBottomInset } = useOverlay();
 
   const [networks, setNetworks] = useState([]);
   const [loadingNets, setLoadingNets] = useState(true);
@@ -57,7 +60,7 @@ export default function DataScreen({ navigation }) {
   const [phone, setPhone] = useState("");
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [confirm, setConfirm] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [pinModal, setPinModal] = useState(false);
 
   useEffect(() => {
@@ -110,12 +113,36 @@ export default function DataScreen({ navigation }) {
     setPlan(null);
   }, [dataType]);
 
-  const handleBuy = () => {
-    if (!network || !plan || !phone) {
-      Toast.show({ type: "error", text1: "Please complete all fields" });
+  // Lift the floating WhatsApp button while the "Pay now" bar is on screen
+  useEffect(() => {
+    setBottomInset(plan ? BAR_HEIGHT : 0);
+    return () => setBottomInset(0);
+  }, [plan, setBottomInset]);
+
+  // Typing a number auto-selects its network. Manual picking still wins until
+  // the number changes again, so the user can always override detection.
+  const handlePhoneChange = (value) => {
+    setPhone(value);
+    const detected = detectNetwork(value);
+    if (!detected || !networks.length) return;
+    const match = networks.find(
+      (n) => (n.name || "").toUpperCase() === detected.toUpperCase(),
+    );
+    if (match) setNetwork((prev) => (prev === match.id ? prev : match.id));
+  };
+
+  const handlePayNow = () => {
+    if (!phone.trim()) {
+      Toast.show({ type: "error", text1: "Enter a phone number" });
       return;
     }
-    setConfirm(true);
+    if (!network) {
+      Toast.show({ type: "error", text1: "Select a network" });
+      return;
+    }
+    if (!plan) return;
+    Keyboard.dismiss();
+    setConfirmOpen(true);
   };
 
   const doSubmit = async (pin) => {
@@ -128,7 +155,7 @@ export default function DataScreen({ navigation }) {
         pin,
       });
       setPinModal(false);
-      setConfirm(false);
+      setConfirmOpen(false);
       const ref = r.data?.data?.ref || r.data?.ref;
       if (ref) return navigation.navigate("Receipt", { ref });
       Toast.show({ type: "success", text1: "Data purchased successfully!" });
@@ -148,7 +175,20 @@ export default function DataScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-      <Header title="Buy Data" onBack={() => navigation.goBack()} />
+      <Header
+        title="Buy Data"
+        onBack={() => navigation.goBack()}
+        right={
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Transactions")}
+            style={styles.historyBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="time-outline" size={13} color={COLORS.primary} />
+            <Text style={styles.historyText}>History</Text>
+          </TouchableOpacity>
+        }
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={insets.top + 56}
@@ -158,13 +198,45 @@ export default function DataScreen({ navigation }) {
           ref={scrollRef}
           contentContainerStyle={{
             padding: 16,
-            paddingBottom: insets.bottom + 120,
+            paddingBottom: 24,
             gap: 16,
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
+          {/* Hero */}
+          <View style={styles.hero}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroTitle}>Buy Data</Text>
+              <Text style={styles.heroSub}>
+                Top up data bundles on any Nigerian network in seconds.
+              </Text>
+            </View>
+            <View style={styles.heroIcon}>
+              <Ionicons name="wifi" size={26} color="#fff" />
+            </View>
+          </View>
+
+          {/* Phone number — first, and it picks the network while you type */}
+          <Card>
+            <View style={styles.phoneHead}>
+              <Text style={styles.phoneLabel}>Phone Number</Text>
+              {selectedNetwork ? (
+                <View style={styles.netChip}>
+                  <NetworkLogo name={selectedNetwork.name} size={16} />
+                  <Text style={styles.netChipText}>{selectedNetwork.name}</Text>
+                </View>
+              ) : null}
+            </View>
+            <PhoneInput
+              label={null}
+              value={phone}
+              onChangeText={handlePhoneChange}
+              placeholder="Enter phone number"
+            />
+          </Card>
+
           {/* Network picker */}
           <Card>
             <SectionHeader title="Select Network" />
@@ -255,7 +327,7 @@ export default function DataScreen({ navigation }) {
           {/* Plan selector */}
           {network && dataType && (
             <Card>
-              <SectionHeader title="Choose Plan" />
+              <SectionHeader title="Choose a Plan" />
               {plans.length === 0 ? (
                 <Text style={styles.noPlans}>No plans available</Text>
               ) : (
@@ -305,68 +377,44 @@ export default function DataScreen({ navigation }) {
               )}
             </Card>
           )}
-
-          {/* Phone number */}
-          {plan && (
-            <Card>
-              <PhoneInput
-                label="Phone Number"
-                value={phone}
-                onChangeText={setPhone}
-                placeholder={`Enter ${selectedNetwork?.name || ""} number`}
-              />
-            </Card>
-          )}
-
-          {/* Confirm summary */}
-          {confirm && plan && phone && (
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryTitle}>Confirm Purchase</Text>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryKey}>Network</Text>
-                <Text style={styles.summaryVal}>{selectedNetwork?.name}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryKey}>Plan</Text>
-                <Text style={styles.summaryVal}>{plan.name}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryKey}>Phone</Text>
-                <Text style={styles.summaryVal}>{phone}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryKey}>Amount</Text>
-                <Text
-                  style={[
-                    styles.summaryVal,
-                    { color: COLORS.primary, fontWeight: "900" },
-                  ]}
-                >
-                  ₦{Number(plan.userPrice).toLocaleString()}
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {plan && (
-            <Button
-              title={confirm ? "Tap to Confirm & Pay" : "Continue"}
-              onPress={confirm ? () => setPinModal(true) : handleBuy}
-              loading={loading}
-              size="lg"
-            />
-          )}
-
-          {confirm && (
-            <Button
-              title="Cancel"
-              variant="outline"
-              onPress={() => setConfirm(false)}
-              size="md"
-            />
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Pay now bar */}
+      {plan && (
+        <View style={[styles.bottomBar, { height: BAR_HEIGHT }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.barPrice}>₦{Number(plan.userPrice).toLocaleString()}</Text>
+            <Text style={styles.barPlan} numberOfLines={1}>
+              {plan.name}
+              {plan.validity ? ` · ${formatValidity(plan.validity)}` : ""}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.payBtn}
+            onPress={handlePayNow}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.payBtnText}>Pay now</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <ConfirmPurchaseModal
+        visible={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          setPinModal(true);
+        }}
+        plan={plan}
+        phone={phone}
+        networkName={selectedNetwork?.name}
+        dataType={dataType}
+        validityLabel={plan?.validity ? formatValidity(plan.validity) : ""}
+        loading={loading}
+      />
       <TransactionPinModal
         visible={pinModal}
         onSubmit={doSubmit}
@@ -378,6 +426,62 @@ export default function DataScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  hero: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.black,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: "#1e293b",
+    padding: 18,
+    gap: 12,
+    ...SHADOW.md,
+    shadowColor: COLORS.black,
+  },
+  heroTitle: { fontSize: 20, fontWeight: "900", color: "#fff", letterSpacing: -0.5 },
+  heroSub: { fontSize: 12.5, color: "#94a3b8", marginTop: 4, lineHeight: 17 },
+  heroIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  phoneHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  phoneLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: COLORS.black,
+    letterSpacing: 0.2,
+  },
+  netChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary + "14",
+    borderWidth: 1,
+    borderColor: COLORS.primary + "40",
+  },
+  netChipText: { fontSize: 12, fontWeight: "800", color: COLORS.primary },
+  historyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary + "12",
+  },
+  historyText: { fontSize: 11.5, fontWeight: "800", color: COLORS.primary },
   networkRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   networkPill: {
     flexDirection: "row",
@@ -438,24 +542,30 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   planValidity: { fontSize: 10, color: COLORS.subtle },
-  summaryBox: {
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: RADIUS.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.primary + "30",
-  },
-  summaryTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: COLORS.primary,
-    marginBottom: 12,
-  },
-  summaryRow: {
+  bottomBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: "center",
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: 12,
+    ...SHADOW.lg,
+    shadowOffset: { width: 0, height: -4 },
   },
-  summaryKey: { fontSize: 13, color: COLORS.muted },
-  summaryVal: { fontSize: 13, fontWeight: "700", color: COLORS.black },
+  barPrice: { fontSize: 20, fontWeight: "900", color: COLORS.black, letterSpacing: -0.5 },
+  barPlan: { fontSize: 12, fontWeight: "600", color: COLORS.muted, marginTop: 2 },
+  payBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.full,
+    paddingVertical: 13,
+    paddingHorizontal: 26,
+    ...SHADOW.md,
+    shadowColor: COLORS.primary,
+  },
+  payBtnText: { color: "#fff", fontSize: 15, fontWeight: "800" },
 });

@@ -19,7 +19,7 @@ const NETWORK_PREFIXES = {
   "9mobile": ["0809", "0817", "0818", "0909", "0908"],
 };
 
-function detectNetwork(phone) {
+export function detectNetwork(phone) {
   if (!phone || phone.length < 4) return null;
   const prefix = phone.slice(0, 4);
   for (const [network, prefixes] of Object.entries(NETWORK_PREFIXES)) {
