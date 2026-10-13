@@ -151,6 +151,20 @@ export default function LoginScreen({ navigation }) {
     setTimeout(() => { setLoginStep("identifier"); setPassword(""); }, 10);
   };
 
+  // Banner arrow. Login can be the ROOT route (Splash uses navigation.replace),
+  // so a bare goBack() would dispatch GO_BACK with nothing behind it.
+  const handleBannerBack = () => {
+    if (otpStep) {
+      setOtpStep(false); setOtpCode(["", "", "", "", "", ""]); setOtpToken(null);
+      setPassword(""); setIdentifier(""); setLoginStep("identifier");
+      fadeAnim.setValue(1); slideAnim.setValue(0);
+      return;
+    }
+    if (loginStep === "password") { handleBackToIdentifier(); return; }
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate("Welcome");
+  };
+
   // OTP handlers
   const handleOtpChange = (index, value) => {
     if (!/^\d*$/.test(value)) return;
@@ -636,7 +650,7 @@ const handleBiometricLogin = async () => {
             <View style={styles.circle3} />
 
             <TouchableOpacity
-              onPress={() => navigation.goBack()}
+              onPress={handleBannerBack}
               style={{ position: "absolute", top: insets.top + 10, left: 16, zIndex: 10 }}
               activeOpacity={0.7}
             >
