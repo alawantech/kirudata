@@ -21,21 +21,21 @@ export function Header({ title, onBack, right, transparent = false }) {
       ]}
     >
       <View style={styles.row}>
-        {onBack ? (
-          <TouchableOpacity
-            onPress={onBack}
-            style={styles.backBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="chevron-back" size={24} color={COLORS.black} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.backBtn} />
-        )}
+        <View style={styles.side}>
+          {onBack ? (
+            <TouchableOpacity
+              onPress={onBack}
+              style={styles.backBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="chevron-back" size={24} color={COLORS.black} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
-        <View style={styles.right}>{right || null}</View>
+        <View style={[styles.side, styles.sideRight]}>{right || null}</View>
       </View>
     </View>
   );
@@ -55,7 +55,14 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+  },
+  side: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  sideRight: {
+    justifyContent: "flex-end",
   },
   backBtn: {
     width: 36,
@@ -66,15 +73,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   title: {
-    flex: 1,
+    flexShrink: 1,
     textAlign: "center",
     fontSize: 16,
     fontWeight: "800",
     color: COLORS.black,
     letterSpacing: -0.3,
-  },
-  right: {
-    width: 36,
-    alignItems: "flex-end",
   },
 });

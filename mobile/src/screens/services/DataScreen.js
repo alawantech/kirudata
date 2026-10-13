@@ -186,7 +186,7 @@ export default function DataScreen({ navigation }) {
             activeOpacity={0.7}
           >
             <Ionicons name="time-outline" size={13} color={COLORS.primary} />
-            <Text style={styles.historyText}>History</Text>
+            <Text style={styles.historyText} numberOfLines={1}>History</Text>
           </TouchableOpacity>
         }
       />
@@ -448,12 +448,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
+    flexShrink: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary + "12",
   },
-  historyText: { fontSize: 11.5, fontWeight: "800", color: COLORS.primary },
+  historyText: { fontSize: 12, fontWeight: "800", color: COLORS.primary },
   typeRow: { flexDirection: "row", gap: 8, paddingHorizontal: 4 },
   typePill: {
     paddingHorizontal: 14,
