@@ -533,14 +533,19 @@ const handleBiometricLogin = async () => {
                       <Text style={styles.wbFingerprintLabel}>Scan Your Fingerprint</Text>
                     </TouchableOpacity>
                   ) : biometric.isSupported && !biometric.isEnabled ? (
-                    <View style={styles.wbFingerprintWrap}>
+                    <TouchableOpacity
+                      onPress={() => Toast.show({ type: "info", text1: "Log in with your password once to enable fingerprint login" })}
+                      style={styles.wbFingerprintWrap}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    >
                       <View style={[styles.wbFingerprintCircle, { backgroundColor: "#f1f5f9" }]}>
                         <Ionicons name="finger-print" size={36} color="#94a3b8" />
                       </View>
                       <Text style={styles.wbFingerprintLabel}>
                         Log in with password first to enable fingerprint
                       </Text>
-                    </View>
+                    </TouchableOpacity>
                   ) : null}
 
                 {/* Password Input */}
