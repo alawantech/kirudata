@@ -406,6 +406,25 @@ The frontend runs `next start` (production build). Every frontend change MUST:
 
 Backend changes only need `pm2 restart guchor-backend` (plain Node.js).
 
+### Mobile App — OTA Updates (EAS Update)
+Published under Expo account/project `kiru-data` (project ID `ff5e6b07-f55a-4814-9db7-1446b013d7d6`, Android package `com.kirudata.app`). `expo-updates` is configured in `mobile/app.json` with `runtimeVersion.policy = "appVersion"` and `updates.url = https://u.expo.dev/<projectId>`. `mobile/eas.json` binds each profile to a channel: `development` / `preview` / `production`. Build auth for the `kiru-data` account is a session token (`EXPO_TOKEN`) — the default local CLI login may point at a different Expo account, so always export `EXPO_TOKEN` for Kiru commands.
+
+**JS-only changes ship OTA** (no Play Store, no reinstall, no review):
+```bash
+cd mobile && EXPO_TOKEN=<kiru token> npx eas-cli update --channel preview --platform android --environment preview --message "<what changed>" --non-interactive
+```
+
+**Native changes need a fresh build** (new native deps, config plugins such as `withStartupSplash.js`, app icons, Expo SDK upgrades):
+```bash
+cd mobile && EXPO_TOKEN=<kiru token> npx eas-cli build --platform android --profile preview --non-interactive
+```
+
+**Rules**
+- OTA only reaches installs whose `runtimeVersion` matches (currently `1.0.0`, derived from `appVersion`). Native changes require bumping `app.version` and shipping a new build — never OTA them.
+- `--environment <name>` is mandatory when `--non-interactive` is set, and must match the channel.
+- Publish to `preview` for directly-installed APKs and to `production` for Play Store releases — both channels already have a baseline update, so either works the moment a build exists for it.
+- Never commit EAS tokens; pass them via env for the session only.
+
 ### Nginx Config
 ```nginx
 location /api/ {
@@ -507,6 +526,7 @@ git push origin main
 | 2026-10-13 | **Header right slot no longer crushes the History pill (all 4 apps)** — `Header` had a hard `width: 36` on its right container, so the Buy Data History pill (~78px) was forced into a 36px box and wrapped one letter per line, rendering as a vertical H-i-s-t-o-r-y column. Rebuilt the header row as three flex columns (side flex 1 / title flexShrink 1 centered / side flex 1 with justifyContent flex-end), so the title stays perfectly centred while the right slot sizes to its content. The pill also gained flexShrink 0 and numberOfLines 1 so it can never wrap again. `expo export` bundles clean x4. | §6, §13 | Repo pushed; needs a fresh EAS build. |
 | 2026-10-13 | **Buy Airtime redesigned to match Buy Data (all 4 mobile apps)** — phone number moved to the top with live network auto-detect via `detectNetwork` (no network preselected), Select Network uses the auto-fitting NetworkSelector rail, new Quick Amount pills (100/200/500/1000) plus an "Or enter amount" field with a naira prefix, the discount banner, a fixed Pay now bar (cost + Pay now) and the shared ConfirmPurchaseModal now taking service=airtime — big amount is the discounted cost, rows are Recipient / Amount / Discount, note reads "Airtime is delivered instantly after payment". ConfirmPurchaseModal also gained a dark amount card, a network logo band and 2-decimal money formatting for BOTH services. History pill added to the airtime header. `expo export` bundles clean x4. | §6, §7, §13 | Repo pushed; needs a fresh EAS build. |
 | 2026-10-13 | **New USSD Codes screen + USSD Enquiry entry points (all 4 mobile apps)** — dedicated `src/screens/UssdCodesScreen.js` lists per-network codes (MTN / AIRTEL / GLO / 9MOBILE: check number, check balance, check data usage including Gifting and SME) grouped under logo + name sections; tapping a row copies the code to the clipboard (expo-clipboard, already a dependency) and toasts it. Registered as `UssdCodes` in ServicesStack, HomeStack and the root AppStack so `navigation.navigate("UssdCodes")` works from anywhere including the receipt. Reusable `UssdEnquiryRow` component added and placed at the bottom of Buy Data and Buy Airtime; the receipt gained a "Check balance with USSD" outline button between Save/Share and Buy Another. Codes were transcribed from the supplied reference screens — edit the USSD array in that file to correct any. `expo export` bundles clean x4. | §4, §6, §7, §13 | Repo pushed; needs a fresh EAS build. |
+| 2026-10-14 | **Kiru mobile: EAS Update (OTA) enabled + SDK 57 preview APK + both channels baselined** — the earlier builds (2026-10-10 and 2026-10-13 14:48) had `channel: None` and `runtime: None`, so they could never receive an OTA update. Ran `eas update:configure` (adds `runtimeVersion.policy = appVersion` + `updates.url` for project `ff5e6b07-f55a-4814-9db7-1446b013d7d6`), de-duplicated the contacts permissions it re-added in `app.json`, added `channel` bindings in `eas.json` (development/preview/production), committed `45e1311`. Built the SDK 57 preview APK (build `6bf7532d`, versionCode 1, `updateChannel = preview`, `runtime = 1.0.0`): https://expo.dev/artifacts/eas/QqJEFhi69CKVDJH7WyUd1_Wg0Dat1mX4evuHxt1o6Xk.apk. Published baseline OTA updates to **both** channels so the pipeline is warm whenever Kiru reaches the Play Store — `preview` group `9e77feba-e369-40cc-9ac0-889f6d34fe9c`, `production` group `616480fc-d426-4bdf-8673-4282d7fcf55e`. Kiru is not on the Play Store yet: when it goes up, build the `production` profile (its OTA config is already committed) and thereafter publish every JS-only change with the same `eas update` command. | §7, §10, §13 | Auth is `EXPO_TOKEN`; no Play upload yet. |
 
 ---
 
