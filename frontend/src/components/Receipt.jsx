@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   CheckCircle2,
   Phone,
@@ -13,18 +13,17 @@ import {
   CreditCard,
   Repeat,
   Copy,
-  Download,
+  Share2,
   ShieldCheck,
   Loader2,
   Hash,
   Calendar,
   FileText,
-  ArrowDownLeft,
-  ArrowUpRight,
   MapPin,
   User,
   Package,
   Info,
+  Image as ImageIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -44,39 +43,35 @@ const SVC_MAP = {
 };
 
 const ROW_ICON_MAP = {
-  "Reference": Hash,
+  Reference: Hash,
   "Transaction ID": Hash,
-  "Service": Package,
-  "Description": FileText,
-  "Amount": Wallet,
-  "Old Balance": ArrowDownLeft,
-  "New Balance": ArrowUpRight,
-  "Date": Calendar,
-  "Token": Zap,
-  "Meter": Hash,
+  Service: Package,
+  Description: FileText,
+  Amount: Wallet,
+  Date: Calendar,
+  Token: Zap,
+  Meter: Hash,
   "Meter Type": Info,
   "Customer Name": User,
   "Customer Address": MapPin,
-  "Product": Package,
-  "Status": CheckCircle2,
+  Product: Package,
+  Status: CheckCircle2,
 };
 
 const ROW_ICON_COLOR = {
-  "Reference": "#6366f1",
+  Reference: "#6366f1",
   "Transaction ID": "#6366f1",
-  "Service": "#8b5cf6",
-  "Description": "#a78bfa",
-  "Amount": "#4f46e5",
-  "Old Balance": "#f97316",
-  "New Balance": "#10b981",
-  "Date": "#64748b",
-  "Token": "#d97706",
-  "Meter": "#0891b2",
+  Service: "#8b5cf6",
+  Description: "#a78bfa",
+  Amount: "#4f46e5",
+  Date: "#64748b",
+  Token: "#d97706",
+  Meter: "#0891b2",
   "Meter Type": "#0891b2",
   "Customer Name": "#7c3aed",
   "Customer Address": "#6366f1",
-  "Product": "#8b5cf6",
-  "Status": "#10b981",
+  Product: "#8b5cf6",
+  Status: "#10b981",
 };
 
 export function getSvcMeta(category, servicename = "") {
@@ -99,6 +94,16 @@ function fmtNaira(n) {
   return "\u20A6" + v.toLocaleString("en-NG", { minimumFractionDigits: 2 });
 }
 
+function fmtDate(d) {
+  return new Date(d).toLocaleString("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -108,7 +113,7 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
   ctx.lineTo(x + r, y + h);
   ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x + r, y + r);
+  ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
 }
@@ -123,44 +128,82 @@ function loadImage(url) {
   });
 }
 
-function drawReceiptCanvas(tx, siteName, label, st, isDebit, details, logoImg) {
+function parseServicedesc(desc, servicename, apiResponseLog) {
+  if (!desc || desc === "\u2014") return { description: desc || "\u2014" };
+  let token;
+  if (apiResponseLog && servicename === "Electricity") {
+    try {
+      const parsed = typeof apiResponseLog === "string" ? JSON.parse(apiResponseLog) : apiResponseLog;
+      if (parsed.token) token = parsed.token;
+    } catch {}
+  }
+  if (servicename !== "Electricity") return { description: desc };
+  const parts = desc.split(" | ").map((p) => p.trim());
+  const first = parts[0] || desc;
+  const rest = parts.length > 1 ? parts.slice(1) : [];
+  const meterTypes = ["Prepaid", "Postpaid"];
+  let meterType = "";
+  let providerName = first;
+  for (const mt of meterTypes) {
+    if (first.toLowerCase().includes(mt.toLowerCase())) {
+      meterType = mt;
+      providerName = first.replace(new RegExp(mt, "i"), "").replace(/\s*-\s*\d+/, "").trim();
+      break;
+    }
+  }
+  const meterMatch = first.match(/(\d{10,})/);
+  const meterNumber = meterMatch ? meterMatch[1] : undefined;
+  if (!providerName || providerName === first) {
+    providerName = first.replace(/\d{10,}/, "").replace(/\s*-\s*$/, "").trim();
+  }
+  return {
+    description: providerName || undefined,
+    meterNumber,
+    meterType: meterType || undefined,
+    customerName: rest[0] || undefined,
+    address: rest[1] || undefined,
+    token,
+  };
+}
+
+function drawReceiptCanvas(tx, siteName, label, st, isDebit, details, token, logoImg) {
   const dpr = 2;
   const W = 440;
-  const PADDING = 32;
-  const CONTENT_W = W - PADDING * 2;
+  const PAD = 24;
+  const HEADER_H = token ? 280 : 250;
+  const ROW_H = 44;
+  const TOKEN_H = token ? 64 : 0;
+  const FOOTER_H = 48;
+  const totalH = HEADER_H + TOKEN_H + ROW_H * details.length + FOOTER_H + 32;
 
   const canvas = document.createElement("canvas");
   canvas.width = W * dpr;
-  canvas.height = 900 * dpr;
+  canvas.height = totalH * dpr;
   const ctx = canvas.getContext("2d");
   ctx.scale(dpr, dpr);
 
-  let y = 0;
-
-  ctx.fillStyle = "#f5f5f7";
-  ctx.fillRect(0, 0, W, 900);
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillRect(0, 0, W, totalH);
 
   const cardX = 16;
   const cardW = W - 32;
-  const cardStartY = 16;
-  y = cardStartY;
+  let y = 16;
 
-  const headerH = 260;
-  roundRect(ctx, cardX, y, cardW, headerH, 20);
-  const grad = ctx.createLinearGradient(cardX, y, cardX + cardW, y + headerH);
-  grad.addColorStop(0, "#4f46e5");
-  grad.addColorStop(1, "#7c3aed");
+  roundRect(ctx, cardX, y, cardW, HEADER_H, 20);
+  const grad = ctx.createLinearGradient(cardX, y, cardX + cardW, y + HEADER_H);
+  grad.addColorStop(0, "#0f172a");
+  grad.addColorStop(1, "#1e293b");
   ctx.fillStyle = grad;
   ctx.fill();
 
   ctx.save();
   ctx.beginPath();
-  ctx.arc(cardX + cardW - 30, y - 30, 60, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.arc(cardX + cardW - 20, y - 20, 60, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(245,158,11,0.06)";
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cardX + 20, y + headerH + 20, 45, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  ctx.arc(cardX + 20, y + HEADER_H + 20, 45, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(245,158,11,0.04)";
   ctx.fill();
   ctx.restore();
 
@@ -172,327 +215,334 @@ function drawReceiptCanvas(tx, siteName, label, st, isDebit, details, logoImg) {
     ctx.save();
     roundRect(ctx, logoX, logoY, logoSize, logoSize, 12);
     ctx.clip();
-    ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(logoX, logoY, logoSize, logoSize);
+    ctx.drawImage(logoImg, logoX + 2, logoY + 2, logoSize - 4, logoSize - 4);
     ctx.restore();
   } else {
     roundRect(ctx, logoX, logoY, logoSize, logoSize, 12);
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
     ctx.fill();
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.font = "bold 22px -apple-system, BlinkMacSystemFont, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(siteName.charAt(0), W / 2, logoY + logoSize / 2);
   }
 
-  y = logoY + logoSize + 10;
+  y = logoY + logoSize + 8;
   ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.font = "800 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.font = "700 13px -apple-system, BlinkMacSystemFont, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(siteName, W / 2, y);
 
-  y += 22;
-  const checkR = 26;
-  ctx.beginPath();
-  ctx.arc(W / 2, y + checkR, checkR, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.18)";
-  ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 26px -apple-system, sans-serif";
-  ctx.fillText("\u2713", W / 2, y + checkR + 2);
-
-  y += checkR * 2 + 14;
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.font = "600 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText(label + " Receipt", W / 2, y);
+  y += 18;
+  ctx.fillStyle = "#f59e0b";
+  ctx.font = "700 10px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText("TRANSACTION RECEIPT", W / 2, y);
 
   y += 24;
-  ctx.fillStyle = "#fff";
-  ctx.font = "900 30px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  const amtText = (isDebit ? "-" : "+") + fmtNaira(tx.amount);
-  ctx.fillText(amtText, W / 2, y);
+  ctx.fillStyle = "#f59e0b";
+  ctx.font = "900 30px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText((isDebit ? "-" : "+") + fmtNaira(tx.amount), W / 2, y);
 
   y += 20;
-  const badgeText = st.label;
-  ctx.font = "700 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  const badgeW = ctx.measureText(badgeText).width + 28;
-  const badgeH = 22;
-  roundRect(ctx, W / 2 - badgeW / 2, y, badgeW, badgeH, 11);
-  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  const badgeColor = st.cls === "badge-success" ? "#10b981" : st.cls === "badge-failed" ? "#ef4444" : "#f59e0b";
+  const badgeBg = st.cls === "badge-success" ? "rgba(16,185,129,0.15)" : st.cls === "badge-failed" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)";
+  ctx.font = "700 11px -apple-system, BlinkMacSystemFont, sans-serif";
+  const badgeW = ctx.measureText(st.label).width + 36;
+  const badgeH = 24;
+  roundRect(ctx, W / 2 - badgeW / 2, y, badgeW, badgeH, 12);
+  ctx.fillStyle = badgeBg;
   ctx.fill();
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = badgeColor;
   ctx.textBaseline = "middle";
-  ctx.fillText(badgeText, W / 2, y + badgeH / 2);
+  ctx.fillText("\u2713  " + st.label, W / 2, y + badgeH / 2);
 
-  y = cardStartY + headerH + 12;
-  const rowPad = 14;
-  const rowH = 44;
-  const iconCircleSize = 28;
+  y += badgeH + 14;
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.font = "500 11px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText(fmtDate(tx.date || tx.createdAt), W / 2, y);
 
-  roundRect(ctx, cardX, y, cardW, rowH * details.length, 16);
+  y = 16 + HEADER_H + 10;
+
+  if (token) {
+    const tokH = 56;
+    roundRect(ctx, cardX, y, cardW, tokH, 14);
+    ctx.fillStyle = "#fffbeb";
+    ctx.fill();
+    ctx.strokeStyle = "#f59e0b";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = "#92400e";
+    ctx.font = "700 9px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("PREPAID TOKEN", W / 2, y + 16);
+    ctx.fillStyle = "#09090b";
+    ctx.font = "700 13px 'Courier New', monospace";
+    ctx.fillText(token, W / 2, y + 38);
+    y += tokH + 10;
+  }
+
+  const rowsH = ROW_H * details.length;
+  roundRect(ctx, cardX, y, cardW, rowsH + 8, 16);
   ctx.fillStyle = "#fff";
   ctx.fill();
 
   details.forEach((d, i) => {
-    const ry = y + i * rowH;
+    const ry = y + 4 + i * ROW_H;
+    const iconColor = ROW_ICON_COLOR[d.label] || "#6366f1";
     ctx.textBaseline = "middle";
 
-    const iconColor = ROW_ICON_COLOR[d.label] || "#6366f1";
-    const iconBg = iconColor + "12";
-    const iconCx = cardX + rowPad + iconCircleSize / 2;
-    const iconCy = ry + rowH / 2;
-
-    ctx.beginPath();
-    ctx.arc(iconCx, iconCy, iconCircleSize / 2, 0, Math.PI * 2);
-    ctx.fillStyle = iconBg;
-    ctx.fill();
-
-    ctx.fillStyle = iconColor;
-    ctx.font = "600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
-    const iconChar = d.label.charAt(0);
-    ctx.fillText(iconChar, iconCx, iconCy + 1);
-
-    ctx.textAlign = "left";
     ctx.fillStyle = "#71717a";
-    ctx.font = "500 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillText(d.label, cardX + rowPad + iconCircleSize + 10, ry + rowH / 2);
+    ctx.font = "500 12px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(d.label, cardX + PAD, ry + ROW_H / 2);
 
     ctx.textAlign = "right";
     if (d.highlight) {
-      ctx.fillStyle = d.color || "#09090b";
-      ctx.font = "900 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#09090b";
+      ctx.font = "800 13px -apple-system, BlinkMacSystemFont, sans-serif";
+    } else if (d.mono) {
+      ctx.fillStyle = "#09090b";
+      ctx.font = "600 11px 'Courier New', monospace";
     } else {
       ctx.fillStyle = "#09090b";
-      ctx.font = "600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+      ctx.font = "600 12px -apple-system, BlinkMacSystemFont, sans-serif";
     }
-    if (d.mono) ctx.font = "600 12px 'Courier New', monospace";
-
     let val = d.value;
-    let maxW = CONTENT_W - rowPad * 2 - 100 - iconCircleSize - 10;
-    if (ctx.measureText(val).width > maxW) {
-      while (ctx.measureText(val + "\u2026").width > maxW && val.length > 5) {
-        val = val.slice(0, -1);
-      }
-      val += "\u2026";
-    }
-    ctx.fillText(val, cardX + cardW - rowPad, ry + rowH / 2);
+    const maxW = cardW - PAD * 2 - 110;
+    while (ctx.measureText(val).width > maxW && val.length > 5) val = val.slice(0, -1);
+    if (val !== d.value) val += "\u2026";
+    ctx.fillText(val, cardX + cardW - PAD, ry + ROW_H / 2);
 
     if (i < details.length - 1) {
-      ctx.strokeStyle = "#f4f4f5";
+      ctx.strokeStyle = "#f1f5f9";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(cardX + rowPad + iconCircleSize + 10, ry + rowH);
-      ctx.lineTo(cardX + cardW - rowPad, ry + rowH);
+      ctx.moveTo(cardX + PAD, ry + ROW_H);
+      ctx.lineTo(cardX + cardW - PAD, ry + ROW_H);
       ctx.stroke();
     }
   });
 
-  y += rowH * details.length + 14;
-
+  y += rowsH + 18;
   ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
   ctx.fillStyle = "#a1a1aa";
-  ctx.font = "600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("\u{1F6E1}\uFE0F Secured & verified by " + siteName, W / 2, y);
+  ctx.font = "600 10px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText("\u{1F6E1}\uFE0F  Secured & verified by " + siteName, W / 2, y);
 
-  y += 24;
   const finalH = Math.max(y + 16, 400);
-  const trimmedCanvas = document.createElement("canvas");
-  trimmedCanvas.width = canvas.width;
-  trimmedCanvas.height = finalH * dpr;
-  const tCtx = trimmedCanvas.getContext("2d");
+  const trimmed = document.createElement("canvas");
+  trimmed.width = canvas.width;
+  trimmed.height = finalH * dpr;
+  const tCtx = trimmed.getContext("2d");
   tCtx.drawImage(canvas, 0, 0, canvas.width, finalH * dpr, 0, 0, canvas.width, finalH * dpr);
-
-  return trimmedCanvas;
+  return trimmed;
 }
 
-function parseServicedesc(desc, servicename, apiResponseLog) {
-  if (!desc || desc === "\u2014") return { description: desc || "\u2014" };
+async function canvasToPdfBlob(canvas) {
+  const jpegBlob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.92));
+  const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
+  const w = canvas.width;
+  const h = canvas.height;
+  const scale = 0.75;
+  const pw = Math.round(w * scale);
+  const ph = Math.round(h * scale);
+  const enc = new TextEncoder();
+  const parts = [];
+  let offset = 0;
+  const offsets = {};
+  const push = (s) => { const b = enc.encode(s); parts.push(b); offset += b.length; };
+  const pushB = (b) => { parts.push(b); offset += b.length; };
+  push("%PDF-1.4\n");
+  offsets[1] = offset;
+  push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  offsets[2] = offset;
+  push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+  offsets[3] = offset;
+  push(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Contents 4 0 R /Resources << /XObject << /Im0 5 0 R >> >> >>\nendobj\n`);
+  const content = `q ${pw} 0 0 ${ph} 0 0 cm /Im0 Do Q`;
+  offsets[4] = offset;
+  push(`4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
+  offsets[5] = offset;
+  push(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`);
+  pushB(jpegBytes);
+  push("\nendstream\nendobj\n");
+  const xrefOffset = offset;
+  push("xref\n0 6\n0000000000 65535 f \n");
+  for (let i = 1; i <= 5; i++) push(`${String(offsets[i]).padStart(10, "0")} 00000 n \n`);
+  push(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+  const totalLen = parts.reduce((s, p) => s + p.length, 0);
+  const result = new Uint8Array(totalLen);
+  let pos = 0;
+  for (const part of parts) { result.set(part, pos); pos += part.length; }
+  return new Blob([result], { type: "application/pdf" });
+}
 
-  let token = undefined;
-  if (apiResponseLog && servicename === "Electricity") {
+async function shareOrDownload(blob, filename, title) {
+  const file = new File([blob], filename, { type: blob.type });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      const parsed = typeof apiResponseLog === "string" ? JSON.parse(apiResponseLog) : apiResponseLog;
-      if (parsed.token) token = parsed.token;
-    } catch {}
-  }
-
-  if (servicename !== "Electricity") return { description: desc };
-
-  const parts = desc.split(" | ").map((p) => p.trim());
-  const first = parts[0] || desc;
-  const rest = parts.length > 1 ? parts.slice(1) : [];
-
-  const meterTypes = ["Prepaid", "Postpaid"];
-  let meterType = "";
-  let providerName = first;
-  for (const mt of meterTypes) {
-    if (first.toLowerCase().includes(mt.toLowerCase())) {
-      meterType = mt;
-      providerName = first.replace(new RegExp(mt, "i"), "").replace(/\s*-\s*\d+/, "").trim();
-      break;
+      await navigator.share({ files: [file], title });
+      return;
+    } catch (e) {
+      if (e.name === "AbortError" || e.name === "NotAllowedError") return;
     }
   }
-
-  const meterMatch = first.match(/(\d{10,})/);
-  const meterNumber = meterMatch ? meterMatch[1] : undefined;
-
-  if (!providerName || providerName === first) {
-    providerName = first.replace(/\d{10,}/, "").replace(/\s*-\s*$/, "").trim();
-  }
-
-  return {
-    description: providerName || undefined,
-    meterNumber,
-    meterType: meterType || undefined,
-    customerName: rest[0] || undefined,
-    address: rest[1] || undefined,
-    token,
-  };
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
 export default function ReceiptView({ tx, showPrint = true }) {
-  const [downloading, setDownloading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const settings = useSiteSettings();
   const siteName = settings.sitename || "Gwarzo Data Sub";
 
   const category = tx.category || "other";
-  const { color, bg, Icon, label } = getSvcMeta(category, tx.servicename);
+  const { label } = getSvcMeta(category, tx.servicename);
   const st = SvcStatus(tx.status);
-  const isDebit = parseFloat(tx.oldbal || 0) > parseFloat(tx.newbal || 0);
-
-  const parsedDesc = parseServicedesc(tx.servicedesc || "", tx.servicename, tx.apiResponseLog);
+  const isDebit = true;
+  const parsed = parseServicedesc(tx.servicedesc || "", tx.servicename, tx.apiResponseLog);
   const isElectricity = tx.servicename === "Electricity";
+
   const details = isElectricity
     ? [
-        parsedDesc.token && { label: "Token", value: parsedDesc.token },
         { label: "Transaction ID", value: tx.transref || tx.ref || "\u2014", mono: true },
         { label: "Status", value: st.label },
-        parsedDesc.description && { label: "Product", value: parsedDesc.description },
-        {
-          label: "Amount",
-          value: fmtNaira(tx.amount),
-          highlight: true,
-          color: "#09090b",
-        },
-        parsedDesc.meterNumber && { label: "Meter", value: parsedDesc.meterNumber, mono: true },
-        parsedDesc.meterType && { label: "Meter Type", value: parsedDesc.meterType },
-        parsedDesc.customerName && { label: "Customer Name", value: parsedDesc.customerName },
-        parsedDesc.address && { label: "Customer Address", value: parsedDesc.address },
-        {
-          label: "Date",
-          value: new Date(tx.date || tx.createdAt).toLocaleString("en-NG", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
+        parsed.description && { label: "Product", value: parsed.description },
+        { label: "Amount", value: fmtNaira(tx.amount), highlight: true },
+        parsed.meterNumber && { label: "Meter", value: parsed.meterNumber, mono: true },
+        parsed.meterType && { label: "Meter Type", value: parsed.meterType },
+        parsed.customerName && { label: "Customer Name", value: parsed.customerName },
+        parsed.address && { label: "Customer Address", value: parsed.address },
+        { label: "Date", value: fmtDate(tx.date || tx.createdAt) },
       ].filter(Boolean)
     : [
         { label: "Reference", value: tx.transref || tx.ref || "\u2014", mono: true },
         { label: "Service", value: tx.servicename || label },
         { label: "Description", value: tx.servicedesc || "\u2014" },
-        {
-          label: "Amount",
-          value: `${isDebit ? "-" : "+"}${fmtNaira(tx.amount)}`,
-          highlight: true,
-          color: isDebit ? "#dc2626" : "#059669",
-        },
-        showPrint && tx.oldbal != null && {
-          label: "Old Balance",
-          value: fmtNaira(tx.oldbal),
-        },
-        showPrint && tx.newbal != null && {
-          label: "New Balance",
-          value: fmtNaira(tx.newbal),
-        },
-        {
-          label: "Date",
-          value: new Date(tx.date || tx.createdAt).toLocaleString("en-NG", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ].filter(Boolean);
+        { label: "Amount", value: fmtNaira(tx.amount), highlight: true },
+        { label: "Date", value: fmtDate(tx.date || tx.createdAt) },
+      ];
 
-  const copy = (text) => {
-    navigator.clipboard.writeText(text).then(() => toast.success("Copied!"));
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const generateCanvas = async () => {
+    let logoImg = null;
+    if (settings.logoUrl) logoImg = await loadImage(settings.logoUrl);
+    return drawReceiptCanvas(tx, siteName, label, st, isDebit, details, parsed.token, logoImg);
   };
 
-  const handleDownload = async () => {
-    setDownloading(true);
+  const shareImage = async () => {
+    setBusy(true);
+    setMenuOpen(false);
     try {
-      const canvasDetails = details.filter((d) => d.label !== "Old Balance" && d.label !== "New Balance");
-      let logoImg = null;
-      if (settings.logoUrl) {
-        logoImg = await loadImage(settings.logoUrl);
-      }
-      const canvas = drawReceiptCanvas(tx, siteName, label, st, isDebit, canvasDetails, logoImg);
-      const blob = await new Promise((resolve) =>
-        canvas.toBlob(resolve, "image/png")
-      );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `receipt-${tx.transref || "transaction"}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 3000);
-      toast.success("Receipt downloaded!");
+      const canvas = await generateCanvas();
+      const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+      await shareOrDownload(blob, `receipt-${tx.transref || "transaction"}.png`, "Receipt");
+      toast.success("Receipt shared!");
     } catch (err) {
-      console.error("Download failed:", err);
-      toast.error("Download failed. Try again.");
+      console.error(err);
+      toast.error("Failed to generate receipt");
     } finally {
-      setDownloading(false);
+      setBusy(false);
     }
+  };
+
+  const sharePdf = async () => {
+    setBusy(true);
+    setMenuOpen(false);
+    try {
+      const canvas = await generateCanvas();
+      const blob = await canvasToPdfBlob(canvas);
+      await shareOrDownload(blob, `receipt-${tx.transref || "transaction"}.pdf`, "Receipt");
+      toast.success("Receipt shared!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyRef = () => {
+    navigator.clipboard.writeText(tx.transref || tx.ref || "").then(() => toast.success("Copied!"));
   };
 
   return (
     <div className="receipt-sheet">
       <div
         style={{
-          background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
           borderRadius: "1.25rem",
-          padding: "1.5rem 1.25rem 1.25rem",
+          padding: "2rem 1.25rem 1.5rem",
           textAlign: "center",
           marginBottom: "1rem",
           position: "relative",
           overflow: "hidden",
         }}
       >
-        <div style={{ position: "absolute", top: -30, right: -30, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,.07)" }} />
-        <div style={{ position: "absolute", bottom: -20, left: -20, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,.05)" }} />
+        <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: "50%", background: "rgba(245,158,11,.06)" }} />
+        <div style={{ position: "absolute", bottom: -30, left: -30, width: 100, height: 100, borderRadius: "50%", background: "rgba(245,158,11,.04)" }} />
+
         {settings.logoUrl ? (
-          <img src={settings.logoUrl} alt={siteName} style={{ height: 48, width: "auto", objectFit: "contain", marginBottom: 4, filter: "brightness(0) invert(1)", position: "relative" }} />
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", padding: 4, position: "relative" }}>
+            <img src={settings.logoUrl} alt={siteName} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          </div>
         ) : (
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(255,255,255,.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 4px", color: "#fff", fontWeight: 900, fontSize: 20, letterSpacing: -1, backdropFilter: "blur(4px)", position: "relative" }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(255,255,255,.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", color: "#fff", fontWeight: 900, fontSize: 20, position: "relative" }}>
             {siteName.charAt(0)}
           </div>
         )}
-        <div style={{ color: "rgba(255,255,255,.9)", fontSize: ".82rem", fontWeight: 800, letterSpacing: ".3px", marginBottom: 14, position: "relative" }}>
-          {siteName}
+
+        <div style={{ color: "rgba(255,255,255,.9)", fontSize: ".85rem", fontWeight: 700, position: "relative" }}>{siteName}</div>
+        <div style={{ color: "#f59e0b", fontSize: ".68rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", margin: "4px 0 12px", position: "relative" }}>
+          Transaction Receipt
         </div>
-        <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,.18)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", backdropFilter: "blur(4px)", position: "relative" }}>
-          <CheckCircle2 size={28} color="#fff" strokeWidth={2.5} />
+        <div style={{ fontWeight: 900, fontSize: "2rem", letterSpacing: "-.03em", color: "#f59e0b", margin: "0 0 10px", position: "relative" }}>
+          {fmtNaira(tx.amount)}
         </div>
-        <div style={{ color: "rgba(255,255,255,.8)", fontSize: ".75rem", fontWeight: 600, marginBottom: 4, position: "relative" }}>
-          {label} Receipt
-        </div>
-        <div style={{ fontWeight: 900, fontSize: "1.75rem", letterSpacing: "-.04em", color: "#fff", margin: "0 0 10px", position: "relative" }}>
-          {isDebit ? "-" : "+"}{fmtNaira(tx.amount)}
-        </div>
-        <span style={{ display: "inline-block", background: "rgba(255,255,255,.18)", color: "#fff", padding: "5px 18px", borderRadius: 99, fontSize: ".72rem", fontWeight: 700, backdropFilter: "blur(4px)", position: "relative" }}>
+        <div
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            background: st.cls === "badge-success" ? "rgba(16,185,129,.15)" : st.cls === "badge-failed" ? "rgba(239,68,68,.15)" : "rgba(245,158,11,.15)",
+            color: st.cls === "badge-success" ? "#34d399" : st.cls === "badge-failed" ? "#f87171" : "#fbbf24",
+            padding: "5px 16px", borderRadius: 99, fontSize: ".75rem", fontWeight: 700, position: "relative",
+          }}
+        >
+          <CheckCircle2 size={14} />
           {st.label}
-        </span>
+        </div>
+        <div style={{ color: "rgba(255,255,255,.45)", fontSize: ".72rem", marginTop: 10, position: "relative" }}>
+          {fmtDate(tx.date || tx.createdAt)}
+        </div>
       </div>
+
+      {parsed.token && (
+        <div style={{ border: "1.5px solid #f59e0b", background: "#fffbeb", borderRadius: "1rem", padding: ".85rem 1rem", textAlign: "center", marginBottom: "1rem" }}>
+          <div style={{ fontSize: ".65rem", color: "#92400e", fontWeight: 700, letterSpacing: "1px", marginBottom: 4 }}>PREPAID TOKEN</div>
+          <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#09090b", fontFamily: "'Courier New', monospace", letterSpacing: ".5px", wordBreak: "break-all" }}>
+            {parsed.token}
+          </div>
+        </div>
+      )}
 
       <div style={{ background: "#fff", borderRadius: "1.25rem", overflow: "hidden", border: "1px solid #f1f5f9", boxShadow: "0 2px 12px rgba(0,0,0,.03)" }}>
         {details.map((d, i) => {
@@ -506,7 +556,19 @@ export default function ReceiptView({ tx, showPrint = true }) {
                 </div>
                 <span style={{ fontSize: ".8rem", color: "#71717a" }}>{d.label}</span>
               </div>
-              <span style={{ fontSize: ".85rem", fontWeight: d.highlight ? 900 : 600, color: d.color || "#09090b", textAlign: "right", maxWidth: "55%", wordBreak: "break-all", fontFamily: d.mono ? "monospace" : "inherit" }}>{d.value}</span>
+              <span
+                style={{
+                  fontSize: d.highlight ? ".95rem" : ".85rem",
+                  fontWeight: d.highlight ? 900 : 600,
+                  color: "#09090b",
+                  textAlign: "right",
+                  maxWidth: "55%",
+                  wordBreak: "break-all",
+                  fontFamily: d.mono ? "'Courier New', monospace" : "inherit",
+                }}
+              >
+                {d.value}
+              </span>
             </div>
           );
         })}
@@ -517,16 +579,72 @@ export default function ReceiptView({ tx, showPrint = true }) {
         Secured &amp; verified by {siteName}
       </div>
 
-      <div style={{ display: "flex", gap: ".625rem", marginTop: ".75rem" }}>
-        <button onClick={() => copy(tx.transref || tx.ref || "")} style={{ flex: 1, background: "#fff", border: "1.5px solid #e4e4e7", borderRadius: "1rem", padding: ".85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: ".4rem", fontWeight: 700, fontSize: ".82rem", color: "#4f46e5", cursor: "pointer" }}>
-          <Copy size={16} /> Copy Ref
-        </button>
-        {showPrint && (
-          <button onClick={handleDownload} disabled={downloading} style={{ flex: 1, background: "linear-gradient(135deg, #4f46e5, #7c3aed)", border: "none", borderRadius: "1rem", padding: ".85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: ".4rem", fontWeight: 700, fontSize: ".82rem", color: "#fff", cursor: downloading ? "wait" : "pointer", boxShadow: "0 4px 14px rgba(79,70,229,.3)", opacity: downloading ? 0.7 : 1 }}>
-            {downloading ? (<><Loader2 size={16} className="animate-spin" /> Saving...</>) : (<><Download size={16} /> Download Receipt</>)}
+      {showPrint && (
+        <div style={{ display: "flex", gap: ".625rem", marginTop: ".75rem" }}>
+          <button
+            onClick={copyRef}
+            style={{
+              flex: 1, background: "#fff", border: "1.5px solid #e4e4e7", borderRadius: "1rem",
+              padding: ".85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: ".4rem",
+              fontWeight: 700, fontSize: ".82rem", color: "#4f46e5", cursor: "pointer",
+            }}
+          >
+            <Copy size={16} /> Copy Ref
           </button>
-        )}
-      </div>
+          <div ref={menuRef} style={{ position: "relative", flex: 1 }}>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              disabled={busy}
+              style={{
+                width: "100%", background: "linear-gradient(135deg, #4f46e5, #7c3aed)", border: "none", borderRadius: "1rem",
+                padding: ".85rem", display: "flex", alignItems: "center", justifyContent: "center", gap: ".4rem",
+                fontWeight: 700, fontSize: ".82rem", color: "#fff", cursor: busy ? "wait" : "pointer",
+                boxShadow: "0 4px 14px rgba(79,70,229,.3)", opacity: busy ? 0.7 : 1,
+              }}
+            >
+              {busy ? (
+                <><Loader2 size={16} className="animate-spin" /> Generating...</>
+              ) : (
+                <><Share2 size={16} /> Share Receipt</>
+              )}
+            </button>
+            {menuOpen && !busy && (
+              <>
+                <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 998 }} />
+                <div
+                  style={{
+                    position: "absolute", bottom: "110%", left: 0, right: 0,
+                    background: "#fff", borderRadius: "1rem", border: "1px solid #e4e4e7",
+                    boxShadow: "0 8px 30px rgba(0,0,0,.12)", overflow: "hidden", zIndex: 999,
+                  }}
+                >
+                  <button
+                    onClick={shareImage}
+                    style={{
+                      width: "100%", padding: ".75rem 1rem", display: "flex", alignItems: "center", gap: ".6rem",
+                      background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 600,
+                      color: "#09090b",
+                    }}
+                  >
+                    <ImageIcon size={16} color="#4f46e5" /> Share as Image
+                  </button>
+                  <div style={{ height: 1, background: "#f4f4f5" }} />
+                  <button
+                    onClick={sharePdf}
+                    style={{
+                      width: "100%", padding: ".75rem 1rem", display: "flex", alignItems: "center", gap: ".6rem",
+                      background: "none", border: "none", cursor: "pointer", fontSize: ".82rem", fontWeight: 600,
+                      color: "#09090b",
+                    }}
+                  >
+                    <FileText size={16} color="#dc2626" /> Share as PDF
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

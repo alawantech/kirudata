@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Share,
   Image,
+  Modal,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,76 +32,64 @@ const SVC = {
   sms: { color: "#0369a1", bg: "#f0f9ff", icon: "chatbubble", label: "Bulk SMS" },
   wallet: { color: "#0891b2", bg: "#ecfeff", icon: "wallet", label: "Wallet" },
   card: { color: "#16a34a", bg: "#f0fdf4", icon: "card", label: "Card" },
-  other: { color: "#0891b2", bg: "#ecfeff", icon: "receipt", label: "Transaction" },
+  pin: { color: "#db2777", bg: "#fdf2f8", icon: "key", label: "Pin" },
+  other: { color: "#0891b2", bg: "#ecfeff", icon: "swap-horizontal", label: "Transaction" },
 };
 
-const ROW_ICONS = {
-  "Reference": "finger-print",
-  "Transaction ID": "finger-print",
-  "Service": "cube",
-  "Description": "document-text",
-  "Amount": "wallet",
-  "Old Balance": "arrow-down",
-  "New Balance": "arrow-up",
-  "Date": "calendar",
-  "Token": "flash",
-  "Meter": "speedometer",
-  "Meter Type": "information-circle",
-  "Customer Name": "person",
-  "Customer Address": "location",
-  "Product": "cube",
-  "Status": "checkmark-circle",
-};
+function getSvc(cat, name) {
+  if (SVC[cat]) return SVC[cat];
+  const l = (name || "").toLowerCase();
+  for (const [k, v] of Object.entries(SVC)) if (l.includes(k)) return v;
+  return SVC.other;
+}
 
-const ROW_ICON_COLORS = {
-  "Reference": "#6366f1",
-  "Transaction ID": "#6366f1",
-  "Service": "#8b5cf6",
-  "Description": "#a78bfa",
-  "Amount": "#4f46e5",
-  "Old Balance": "#f97316",
-  "New Balance": "#10b981",
-  "Date": "#64748b",
-  "Token": "#d97706",
-  "Meter": "#0891b2",
-  "Meter Type": "#0891b2",
-  "Customer Name": "#7c3aed",
-  "Customer Address": "#6366f1",
-  "Product": "#8b5cf6",
-  "Status": "#10b981",
-};
+function statusMeta(s) {
+  if (s === 1 || s === "success" || s === "successful")
+    return { label: "Successful", color: COLORS.success, bg: "rgba(16,185,129,.12)" };
+  if (s === 0 || s === "failed")
+    return { label: "Failed", color: COLORS.danger, bg: "rgba(239,68,68,.12)" };
+  return { label: "Pending", color: "#d97706", bg: "rgba(245,158,11,.12)" };
+}
 
-const normaliseUrl = (url) => {
-  if (!url) return null;
+function fmt(n) {
+  return "\u20A6" + Math.abs(parseFloat(n || 0)).toLocaleString("en-NG", { minimumFractionDigits: 2 });
+}
+
+function fmtDate(d) {
+  return new Date(d).toLocaleString("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function normaliseUrl(u) {
+  if (!u) return null;
   try {
-    const apiOrigin = new URL(API_BASE).origin;
-    const parsed = new URL(url);
-    if (parsed.origin !== apiOrigin) {
-      return apiOrigin + parsed.pathname + parsed.search;
-    }
-    return url;
+    const url = new URL(u);
+    const base = new URL(API_BASE);
+    if (url.origin !== base.origin) url.origin = base.origin;
+    return url.toString();
   } catch {
-    return url;
+    return u;
   }
-};
+}
 
 function parseServicedesc(desc, servicename, apiResponseLog) {
-  if (!desc || desc === "\u2014") return { description: desc || "\u2014" };
-
-  let token = undefined;
+  if (!desc || desc === "\u2014") return {};
+  let token;
   if (apiResponseLog && servicename === "Electricity") {
     try {
       const parsed = typeof apiResponseLog === "string" ? JSON.parse(apiResponseLog) : apiResponseLog;
       if (parsed.token) token = parsed.token;
     } catch {}
   }
-
-  if (servicename !== "Electricity") return { description: desc, token };
-
+  if (servicename !== "Electricity") return { description: desc };
   const parts = desc.split(" | ").map((p) => p.trim());
   const first = parts[0] || desc;
   const rest = parts.length > 1 ? parts.slice(1) : [];
-
   const meterTypes = ["Prepaid", "Postpaid"];
   let meterType = "";
   let providerName = first;
@@ -110,14 +100,10 @@ function parseServicedesc(desc, servicename, apiResponseLog) {
       break;
     }
   }
-
   const meterMatch = first.match(/(\d{10,})/);
   const meterNumber = meterMatch ? meterMatch[1] : undefined;
-
-  if (!providerName || providerName === first) {
+  if (!providerName || providerName === first)
     providerName = first.replace(/\d{10,}/, "").replace(/\s*-\s*$/, "").trim();
-  }
-
   return {
     description: providerName || undefined,
     meterNumber,
@@ -128,41 +114,15 @@ function parseServicedesc(desc, servicename, apiResponseLog) {
   };
 }
 
-function getSvc(cat, name = "") {
-  if (SVC[cat]) return SVC[cat];
-  const l = (name || "").toLowerCase();
-  for (const [k, v] of Object.entries(SVC)) if (l.includes(k)) return v;
-  return SVC.other;
-}
-function statusMeta(s) {
-  if (s === 1 || s === "success" || s === "successful")
-    return { color: COLORS.success, label: "Successful", icon: "checkmark-circle" };
-  if (s === 0 || s === "failed")
-    return { color: COLORS.danger, label: "Failed", icon: "close-circle" };
-  return { color: COLORS.warning, label: "Pending", icon: "time" };
-}
-function fmt(n) {
-  return "\u20A6" + Math.abs(Number(n)).toLocaleString("en-NG", { minimumFractionDigits: 2 });
-}
-function fmtDate(d) {
-  return new Date(d).toLocaleString("en-NG", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export default function TransactionReceiptScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const ref = route.params?.ref;
-  const isNew = !!route.params?.isNew;
   const [tx, setTx] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logoUrl, setLogoUrl] = useState(null);
   const [siteName, setSiteName] = useState("Kiru Data");
-  const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareModal, setShareModal] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -189,410 +149,537 @@ export default function TransactionReceiptScreen({ navigation, route }) {
       .catch(() => {});
   }, [load]);
 
+  const isElectricity = tx?.servicename === "Electricity";
+  const pd = tx ? parseServicedesc(tx.servicedesc || "", tx.servicename, tx.apiResponseLog) : {};
+  const st = tx ? statusMeta(tx.status) : statusMeta("pending");
+  const svc = tx ? getSvc(tx.category || "other", tx.servicename) : SVC.other;
+
+  const rows = tx
+    ? isElectricity
+      ? [
+          pd.token && { label: "Token", value: pd.token, mono: true, highlight: true },
+          { label: "Transaction ID", value: tx.transref || tx.ref, mono: true },
+          { label: "Status", value: st.label },
+          pd.description && { label: "Product", value: pd.description },
+          { label: "Amount", value: fmt(tx.amount), highlight: true },
+          pd.meterNumber && { label: "Meter", value: pd.meterNumber, mono: true },
+          pd.meterType && { label: "Meter Type", value: pd.meterType },
+          pd.customerName && { label: "Customer Name", value: pd.customerName },
+          pd.address && { label: "Customer Address", value: pd.address },
+          { label: "Date", value: fmtDate(tx.date || tx.createdAt) },
+        ].filter(Boolean)
+      : [
+          { label: "Reference", value: tx.transref || tx.ref, mono: true },
+          { label: "Service", value: tx.servicename || svc.label },
+          { label: "Description", value: tx.servicedesc || "\u2014" },
+          { label: "Amount", value: fmt(tx.amount), highlight: true },
+          { label: "Date", value: fmtDate(tx.date || tx.createdAt) },
+        ]
+    : [];
+
   const buildReceiptHTML = () => {
     if (!tx) return "";
-    const isDebit = Number(tx.oldbal || 0) > Number(tx.newbal || 0);
-    const st = statusMeta(tx.status);
-    const cat = tx.category || "other";
-    const svc = getSvc(cat, tx.servicename);
-    const pd = parseServicedesc(tx.servicedesc || "", tx.servicename, tx.apiResponseLog);
-    const statusColor = st.color === COLORS.success ? "#10b981" : st.color === COLORS.danger ? "#ef4444" : "#f59e0b";
+    const statusColor = st.label === "Successful" ? "#10b981" : st.label === "Failed" ? "#ef4444" : "#f59e0b";
+
+    let tokenHTML = "";
+    if (pd.token) {
+      tokenHTML = `
+        <div style="border:2px solid #f59e0b;background:#fffbeb;border-radius:14px;padding:14px;text-align:center;margin:0 20px 14px;">
+          <div style="font-size:10px;color:#92400e;font-weight:700;letter-spacing:1.5px;margin-bottom:4px;">PREPAID TOKEN</div>
+          <div style="font-size:16px;font-weight:700;color:#09090b;font-family:monospace;">${pd.token}</div>
+        </div>`;
+    }
 
     let detailsHTML = "";
-    if (isElectricity) {
-      if (pd.token) detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Token</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;font-family:monospace;">${pd.token}</td></tr>`;
-      detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Transaction ID</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;font-family:monospace;">${tx.transref || tx.ref}</td></tr>`;
-      detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Status</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;color:${statusColor};">${st.label}</td></tr>`;
-      if (pd.description) detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Product</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;">${pd.description}</td></tr>`;
-      detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Amount</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:15px;font-weight:900;text-align:right;">${fmt(tx.amount)}</td></tr>`;
-      if (pd.meterNumber) detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Meter</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;font-family:monospace;">${pd.meterNumber}</td></tr>`;
-      if (pd.meterType) detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Meter Type</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;">${pd.meterType}</td></tr>`;
-      if (pd.customerName) detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Customer Name</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;">${pd.customerName}</td></tr>`;
-      if (pd.address) detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Customer Address</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;">${pd.address}</td></tr>`;
-      detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Date</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;">${fmtDate(tx.date || tx.createdAt)}</td></tr>`;
-    } else {
-      detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Reference</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;font-family:monospace;">${tx.transref || tx.ref}</td></tr>`;
-      detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Service</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;">${tx.servicename || svc.label}</td></tr>`;
-      detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Description</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;">${tx.servicedesc || "\u2014"}</td></tr>`;
-      detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Amount</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:15px;font-weight:900;text-align:right;color:${isDebit ? "#ef4444" : "#10b981"};">${isDebit ? "-" : "+"}${fmt(tx.amount)}</td></tr>`;
-      detailsHTML += `<tr><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">Date</td><td style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;text-align:right;">${fmtDate(tx.date || tx.createdAt)}</td></tr>`;
-    }
+    rows.forEach((r, i) => {
+      const border = i < rows.length - 1 ? "border-bottom:1px solid #f1f5f9;" : "";
+      const weight = r.highlight ? "font-weight:900;font-size:15px;" : "font-weight:600;font-size:13px;";
+      const mono = r.mono ? "font-family:monospace;font-size:12px;" : "";
+      detailsHTML += `<tr><td style="padding:11px 16px;${border}color:#64748b;font-size:13px;">${r.label}</td><td style="padding:11px 16px;${border}${weight}${mono}text-align:right;color:#09090b;">${r.value}</td></tr>`;
+    });
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:0;padding:20px;background:#f5f5f7;}</style></head>
-      <body>
-        <div style="max-width:400px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-          <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:30px 20px;text-align:center;">
-            ${logoUrl ? `<img src="${logoUrl}" style="width:60px;height:60px;border-radius:12px;margin-bottom:10px;" />` : `<div style="width:60px;height:60px;border-radius:12px;background:rgba(255,255,255,0.18);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:28px;font-weight:900;">${siteName.charAt(0)}</span></div>`}
-            <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:800;letter-spacing:0.3px;margin-bottom:16px;">${siteName}</div>
-            <div style="width:50px;height:50px;border-radius:25px;background:rgba(255,255,255,0.18);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:#fff;font-size:24px;">&#10003;</span>
-            </div>
-            <div style="color:rgba(255,255,255,0.75);font-size:13px;font-weight:600;margin-bottom:4px;">${svc.label} Receipt</div>
-            <div style="color:#fff;font-size:32px;font-weight:900;letter-spacing:-1px;margin-top:4px;">${isDebit ? "-" : "+"}${fmt(tx.amount)}</div>
-            <div style="display:inline-block;background:rgba(255,255,255,0.18);padding:5px 18px;border-radius:99px;margin-top:12px;"><span style="color:#fff;font-size:12px;font-weight:700;">${st.label}</span></div>
-          </div>
-          <table style="width:100%;border-collapse:collapse;">${detailsHTML}</table>
-          <div style="text-align:center;padding:16px;color:#a1a1aa;font-size:12px;font-weight:600;">Secured & verified by ${siteName}</div>
-          <div style="text-align:center;padding:4px 16px 20px;color:#d4d4d8;font-size:11px;">Generated ${new Date().toLocaleString("en-NG")}</div>
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:16px;background:#f8fafc;}</style></head><body>
+      <div style="max-width:400px;margin:0 auto;">
+        <div style="background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:20px;padding:28px 20px 22px;text-align:center;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;border-radius:50%;background:rgba(245,158,11,0.06);"></div>
+          ${logoUrl ? `<div style="background:#fff;border-radius:14px;width:52px;height:52px;margin:0 auto 8px;padding:4px;display:flex;align-items:center;justify-content:center;"><img src="${logoUrl}" style="width:100%;height:100%;object-fit:contain;" /></div>` : `<div style="width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.1);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:22px;font-weight:900;">${siteName.charAt(0)}</span></div>`}
+          <div style="color:rgba(255,255,255,.9);font-size:14px;font-weight:700;">${siteName}</div>
+          <div style="color:#f59e0b;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:4px 0 12px;">Transaction Receipt</div>
+          <div style="color:#f59e0b;font-size:34px;font-weight:900;letter-spacing:-1px;">${fmt(tx.amount)}</div>
+          <div style="display:inline-block;background:${statusColor}22;color:${statusColor};padding:5px 18px;border-radius:99px;margin-top:10px;font-size:12px;font-weight:700;">&#10003; ${st.label}</div>
+          <div style="color:rgba(255,255,255,.45);font-size:12px;margin-top:10px;">${fmtDate(tx.date || tx.createdAt)}</div>
         </div>
-      </body>
-      </html>`;
+        ${tokenHTML}
+        <div style="background:#fff;border-radius:16px;overflow:hidden;margin-top:14px;">
+          <table style="width:100%;border-collapse:collapse;">${detailsHTML}</table>
+        </div>
+        <div style="text-align:center;padding:14px;color:#a1a1aa;font-size:11px;font-weight:600;">&#128737; Secured &amp; verified by ${siteName}</div>
+      </div>
+    </body></html>`;
   };
 
-  const downloadReceipt = async () => {
+  const shareAsPdf = async () => {
     if (!tx) return;
+    setShareModal(false);
     try {
-      setDownloading(true);
+      setSharing(true);
       const html = buildReceiptHTML();
       const { uri } = await Print.printToFileAsync({ html, base64: false });
-      await Sharing.shareAsync(uri, {
-        mimeType: "application/pdf",
-        dialogTitle: "Save Receipt PDF",
-        UTI: "com.adobe.pdf",
-      });
-    } catch (err) {
-      Toast.show({ type: "error", text1: "Download failed", text2: "Please try again" });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Share Receipt",
+          UTI: "com.adobe.pdf",
+        });
+      } else {
+        Toast.show({ type: "info", text1: "Sharing not available on this device" });
+      }
+    } catch (e) {
+      console.error(e);
+      Toast.show({ type: "error", text1: "Failed to generate PDF" });
     } finally {
-      setDownloading(false);
+      setSharing(false);
     }
   };
 
-  const shareReceipt = async () => {
+  const shareAsText = async () => {
     if (!tx) return;
+    setShareModal(false);
     try {
-      const isDebit = Number(tx.oldbal || 0) > Number(tx.newbal || 0);
-      const st = statusMeta(tx.status);
-      const cat = tx.category || "other";
-      const svc = getSvc(cat, tx.servicename);
-      const pd = parseServicedesc(tx.servicedesc || "", tx.servicename, tx.apiResponseLog);
-
-      const line = "\u2500".repeat(32);
-      let text =
-        `\n${siteName}\n` +
-        `${line}\n` +
-        `${svc.label} Receipt\n` +
-        `${line}\n\n` +
-        `Reference:    ${tx.transref || tx.ref}\n` +
-        `Service:      ${tx.servicename || svc.label}\n`;
-      if (pd.token) text += `Token:        ${pd.token}\n`;
-      if (pd.description) text += `Provider:     ${pd.description}\n`;
-      if (pd.meterNumber) text += `Meter Number: ${pd.meterNumber}\n`;
-      if (pd.meterType) text += `Meter Type:   ${pd.meterType}\n`;
-      if (pd.customerName) text += `Customer:     ${pd.customerName}\n`;
-      if (pd.address) text += `Address:      ${pd.address}\n`;
-      text +=
-        `Amount:       ${isDebit ? "-" : "+"}${fmt(tx.amount)}\n` +
-        `Status:       ${st.label}\n` +
-        `Prev Balance: ${fmt(tx.oldbal)}\n` +
-        `New Balance:  ${fmt(tx.newbal)}\n` +
-        `Date:         ${fmtDate(tx.date || tx.createdAt)}\n\n` +
-        `${line}\n` +
-        `Secured & verified by ${siteName}\n` +
-        `Generated ${new Date().toLocaleString("en-NG")}\n`;
-      await Share.share({ message: text, title: `${siteName} Receipt` });
-    } catch {
-      // user cancelled
-    }
+      const lines = [
+        `\u{1F6E1}\uFE0F ${siteName} — Transaction Receipt`,
+        "",
+        `Amount: ${fmt(tx.amount)}`,
+        `Status: ${st.label}`,
+        `Service: ${tx.servicename || svc.label}`,
+      ];
+      if (isElectricity) {
+        if (pd.token) lines.push(`Token: ${pd.token}`);
+        if (pd.description) lines.push(`Product: ${pd.description}`);
+        if (pd.meterNumber) lines.push(`Meter: ${pd.meterNumber}`);
+        if (pd.meterType) lines.push(`Meter Type: ${pd.meterType}`);
+        if (pd.customerName) lines.push(`Customer: ${pd.customerName}`);
+        if (pd.address) lines.push(`Address: ${pd.address}`);
+      } else if (tx.servicedesc) {
+        lines.push(`Details: ${tx.servicedesc}`);
+      }
+      lines.push(`Ref: ${tx.transref || tx.ref}`);
+      lines.push(`Date: ${fmtDate(tx.date || tx.createdAt)}`);
+      await Share.share({ message: lines.join("\n") });
+    } catch {}
   };
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
-        <LinearGradient colors={["#4f46e5", "#7c3aed"]} style={{ paddingTop: insets.top + 10, paddingBottom: 20, paddingHorizontal: 20 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,.18)", alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="arrow-back" size={20} color="#fff" />
-            </TouchableOpacity>
-            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 17 }}>Receipt</Text>
-          </View>
-        </LinearGradient>
-        <View style={{ flex: 1, justifyContent: "center" }}>
-          <ActivityIndicator color={COLORS.primary} />
-        </View>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 80 }} />
       </View>
     );
   }
+
   if (!tx) return null;
 
-  const cat = tx.category || getSvc("", tx.servicename).label.toLowerCase();
-  const svc = getSvc(cat, tx.servicename);
-  const st = statusMeta(tx.status);
-  const isDebit = Number(tx.oldbal || 0) > Number(tx.newbal || 0);
-
-  const parsedDesc = parseServicedesc(tx.servicedesc || "", tx.servicename, tx.apiResponseLog);
-  const isElectricity = tx.servicename === "Electricity";
-  const rows = isElectricity
-    ? [
-        parsedDesc.token && { label: "Token", value: parsedDesc.token },
-        { label: "Transaction ID", value: tx.transref || tx.ref, mono: true },
-        { label: "Status", value: st.label },
-        parsedDesc.description && { label: "Product", value: parsedDesc.description },
-        {
-          label: "Amount",
-          value: fmt(tx.amount),
-          color: COLORS.black,
-          bold: true,
-        },
-        parsedDesc.meterNumber && { label: "Meter", value: parsedDesc.meterNumber, mono: true },
-        parsedDesc.meterType && { label: "Meter Type", value: parsedDesc.meterType },
-        parsedDesc.customerName && { label: "Customer Name", value: parsedDesc.customerName },
-        parsedDesc.address && { label: "Customer Address", value: parsedDesc.address },
-        { label: "Date", value: fmtDate(tx.date || tx.createdAt) },
-      ].filter(Boolean)
-    : [
-        { label: "Reference", value: tx.transref || tx.ref, mono: true },
-        { label: "Service", value: tx.servicename || svc.label },
-        { label: "Description", value: tx.servicedesc || "\u2014" },
-        {
-          label: "Amount",
-          value: `${isDebit ? "-" : "+"}${fmt(tx.amount)}`,
-          color: isDebit ? COLORS.danger : COLORS.success,
-          bold: true,
-        },
-        { label: "Date", value: fmtDate(tx.date || tx.createdAt) },
-      ].filter(Boolean);
-
   return (
-    <View style={{ flex: 1, backgroundColor: "#f5f5f7" }}>
-      <LinearGradient
-        colors={["#4f46e5", "#7c3aed"]}
-        style={{ paddingTop: insets.top + 10, paddingBottom: 24, paddingHorizontal: 20 }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 }}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,.18)", alignItems: "center", justifyContent: "center" }}
-          >
-            <Ionicons name="arrow-back" size={20} color="#fff" />
-          </TouchableOpacity>
-          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 17 }}>Receipt</Text>
-        </View>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Receipt</Text>
+        <View style={{ width: 38 }} />
+      </View>
 
-        <View style={{ alignItems: "center" }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
+        <LinearGradient colors={["#0f172a", "#1e293b"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+          <View style={styles.heroCircle1} />
+          <View style={styles.heroCircle2} />
+
           {logoUrl ? (
-            <Image source={{ uri: logoUrl }} style={{ width: 48, height: 48, borderRadius: 12, marginBottom: 6, backgroundColor: "rgba(255,255,255,.15)" }} resizeMode="contain" />
+            <View style={styles.logoWrap}>
+              <Image source={{ uri: logoUrl }} style={styles.logoImg} resizeMode="contain" />
+            </View>
           ) : (
             <View style={styles.logoFallback}>
               <Text style={styles.logoFallbackText}>{siteName.charAt(0)}</Text>
             </View>
           )}
-          <Text style={{ color: "rgba(255,255,255,.85)", fontSize: 13, fontWeight: "800", letterSpacing: 0.3, marginBottom: 14 }}>
-            {siteName}
-          </Text>
 
-          <View style={styles.heroCheck}>
-            <Ionicons name={isNew ? "checkmark-circle" : st.icon} size={30} color="#fff" />
-          </View>
-          <Text style={{ color: "rgba(255,255,255,.75)", fontSize: 12, fontWeight: "600", marginBottom: 4 }}>
-            {svc.label} Receipt
-          </Text>
-          <Text style={styles.heroAmount}>
-            {isDebit ? "-" : "+"}{fmt(tx.amount)}
-          </Text>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>{st.label}</Text>
-          </View>
-        </View>
-      </LinearGradient>
+          <Text style={styles.heroSite}>{siteName}</Text>
+          <Text style={styles.heroLabel}>TRANSACTION RECEIPT</Text>
+          <Text style={styles.heroAmount}>{fmt(tx.amount)}</Text>
 
-      <ScrollView
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: insets.bottom + 24,
-          gap: 12,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={[styles.card, SHADOW.sm]}>
-          {rows.map((r, i) => {
-            const iconName = ROW_ICONS[r.label] || "finger-print";
-            const iconColor = ROW_ICON_COLORS[r.label] || "#6366f1";
-            return (
-              <View
-                key={r.label}
-                style={[
-                  styles.detailRow,
-                  i === 0 && { borderTopLeftRadius: RADIUS.md, borderTopRightRadius: RADIUS.md },
-                  i === rows.length - 1 && {
-                    borderBottomLeftRadius: RADIUS.md,
-                    borderBottomRightRadius: RADIUS.md,
-                  },
-                ]}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 }}>
-                  <View style={[styles.rowIconCircle, { backgroundColor: iconColor + "14" }]}>
-                    <Ionicons name={iconName} size={14} color={iconColor} />
-                  </View>
-                  <Text style={styles.detailLabel}>{r.label}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
+            <Ionicons name="checkmark-circle" size={14} color={st.color} />
+            <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
+          </View>
+
+          <Text style={styles.heroDate}>{fmtDate(tx.date || tx.createdAt)}</Text>
+        </LinearGradient>
+
+        {pd.token && (
+          <View style={styles.tokenBox}>
+            <Text style={styles.tokenLabel}>PREPAID TOKEN</Text>
+            <Text style={styles.tokenValue}>{pd.token}</Text>
+          </View>
+        )}
+
+        <View style={styles.card}>
+          {rows.map((r, i) => (
+            <View key={r.label} style={[styles.row, i < rows.length - 1 && styles.rowBorder]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View style={[styles.rowIcon, { backgroundColor: (SVC[r.label] ? SVC[r.label].color : "#6366f1") + "14" }]}>
+                  <Ionicons
+                    name={
+                      r.label === "Token" ? "key" :
+                      r.label === "Meter" || r.label === "Transaction ID" || r.label === "Reference" ? "hash" :
+                      r.label === "Amount" ? "wallet" :
+                      r.label === "Date" ? "calendar" :
+                      r.label === "Status" ? "checkmark-circle" :
+                      r.label === "Customer Name" ? "person" :
+                      r.label === "Customer Address" ? "location" :
+                      r.label === "Product" ? "cube" :
+                      r.label === "Meter Type" ? "information-circle" :
+                      r.label === "Service" ? "grid" : "document-text"
+                    }
+                    size={14}
+                    color={r.label === "Token" ? "#d97706" : "#6366f1"}
+                  />
                 </View>
-                <Text
-                  style={[
-                    styles.detailValue,
-                    r.bold && { fontWeight: "900", color: r.color },
-                    r.mono && { fontFamily: "Courier", fontSize: 12 },
-                  ]}
-                  numberOfLines={3}
-                >
-                  {r.value}
-                </Text>
+                <Text style={styles.rowLabel}>{r.label}</Text>
               </View>
-            );
-          })}
+              <Text
+                style={[
+                  styles.rowValue,
+                  r.highlight && { fontWeight: "900", fontSize: 15 },
+                  r.mono && { fontFamily: "monospace", fontSize: 12 },
+                ]}
+                numberOfLines={3}
+              >
+                {r.value}
+              </Text>
+            </View>
+          ))}
         </View>
 
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4 }}>
-          <Ionicons name="shield-checkmark" size={14} color="#a1a1aa" />
-          <Text style={{ color: "#a1a1aa", fontSize: 11, fontWeight: "600" }}>
-            Secured & verified by {siteName}
-          </Text>
+        <Text style={styles.footer}>
+          <Text>{"\u{1F6E1}\uFE0F"}</Text> Secured & verified by {siteName}
+        </Text>
+
+        <View style={styles.actions}>
+          <TouchableOpacity
+            onPress={() => Share.share({ message: `${siteName} Receipt\nRef: ${tx.transref || tx.ref}` })}
+            style={styles.outlineBtn}
+          >
+            <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.outlineBtnText}>Copy Ref</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShareModal(true)}
+            disabled={sharing}
+            style={[styles.shareBtn, sharing && { opacity: 0.7 }]}
+          >
+            {sharing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="share-social" size={16} color="#fff" />
+                <Text style={styles.shareBtnText}>Share Receipt</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.actionPrimary]}
-          onPress={downloadReceipt}
-          disabled={downloading}
-        >
-          {downloading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="download-outline" size={18} color="#fff" />
-          )}
-          <Text style={[styles.actionText, { color: "#fff" }]}>
-            {downloading ? "Generating PDF..." : "Save / Share Receipt"}
-          </Text>
+        <TouchableOpacity onPress={() => navigation.navigate("UssdCodes")} style={styles.ussdBtn}>
+          <Ionicons name="radio-outline" size={16} color="#64748b" />
+          <Text style={styles.ussdBtnText}>Check balance with USSD</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.actionOutline]}
-          onPress={() => navigation.navigate("UssdCodes")}
-        >
-          <Ionicons name="keypad" size={18} color={COLORS.primary} />
-          <Text style={[styles.actionText, { color: COLORS.primary }]}>
-            Check balance with USSD
-          </Text>
+        <TouchableOpacity onPress={() => navigation.navigate("ServicesList")} style={styles.buyAgain}>
+          <Text style={styles.buyAgainText}>Buy Another</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.actionGhost]}
-          onPress={() => navigation.navigate("ServicesList")}
-        >
-          <Text style={[styles.actionText, { color: COLORS.body }]}>Buy Another</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.thanks}>Thank you for using {siteName}</Text>
       </ScrollView>
+
+      <Modal transparent visible={shareModal} animationType="slide" onRequestClose={() => setShareModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShareModal(false)}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Share Receipt</Text>
+
+            <TouchableOpacity onPress={shareAsPdf} style={styles.modalOption}>
+              <View style={[styles.modalIcon, { backgroundColor: "#fef2f2" }]}>
+                <Ionicons name="document-text" size={20} color="#dc2626" />
+              </View>
+              <View>
+                <Text style={styles.modalOptionTitle}>Share as PDF</Text>
+                <Text style={styles.modalOptionSub}>Beautiful formatted receipt</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={shareAsText} style={styles.modalOption}>
+              <View style={[styles.modalIcon, { backgroundColor: "#eff6ff" }]}>
+                <Ionicons name="text" size={20} color="#4f46e5" />
+              </View>
+              <View>
+                <Text style={styles.modalOptionTitle}>Share as Text</Text>
+                <Text style={styles.modalOptionSub}>Quick plain-text summary</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setShareModal(false)} style={styles.modalCancel}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
 
+const { width } = Dimensions.get("window");
+
 const styles = StyleSheet.create({
-  logoFallback: {
-    width: 48,
-    height: 48,
+  container: { flex: 1, backgroundColor: COLORS.surface },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,.18)",
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
-  logoFallbackText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 20,
-    letterSpacing: -1,
+  headerTitle: { fontSize: 17, fontWeight: "800", color: COLORS.text },
+
+  hero: {
+    borderRadius: 20,
+    padding: 28,
+    alignItems: "center",
+    overflow: "hidden",
   },
-  heroCheck: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,.18)",
+  heroCircle1: {
+    position: "absolute",
+    top: -30,
+    right: -30,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "rgba(245,158,11,.06)",
+  },
+  heroCircle2: {
+    position: "absolute",
+    bottom: -25,
+    left: -25,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "rgba(245,158,11,.04)",
+  },
+  logoWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "#fff",
+    padding: 4,
+    marginBottom: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoImg: { width: "100%", height: "100%" },
+  logoFallback: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,.1)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
   },
-  heroAmount: {
-    fontSize: 34,
-    fontWeight: "900",
-    color: "#fff",
-    letterSpacing: -1,
-    marginTop: 2,
+  logoFallbackText: { color: "#fff", fontSize: 20, fontWeight: "900" },
+  heroSite: { color: "rgba(255,255,255,.9)", fontSize: 14, fontWeight: "700" },
+  heroLabel: {
+    color: "#f59e0b",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 2,
+    marginTop: 4,
+    marginBottom: 10,
   },
-  heroBadge: {
-    backgroundColor: "rgba(255,255,255,.18)",
-    paddingHorizontal: 18,
-    paddingVertical: 5,
+  heroAmount: { color: "#f59e0b", fontSize: 32, fontWeight: "900", letterSpacing: -1 },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     borderRadius: 99,
     marginTop: 10,
   },
-  heroBadgeText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  card: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.md,
-    overflow: "hidden",
-  },
-  detailRow: {
-    flexDirection: "row",
+  statusText: { fontSize: 12, fontWeight: "700" },
+  heroDate: { color: "rgba(255,255,255,.45)", fontSize: 12, marginTop: 10 },
+
+  tokenBox: {
+    borderWidth: 1.5,
+    borderColor: "#f59e0b",
+    backgroundColor: "#fffbeb",
+    borderRadius: 14,
+    padding: 14,
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    marginTop: 14,
   },
-  rowIconCircle: {
+  tokenLabel: {
+    fontSize: 10,
+    color: "#92400e",
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  tokenValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#09090b",
+    fontFamily: "monospace",
+  },
+
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    ...SHADOW.sm,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: "#f4f4f5" },
+  rowIcon: {
     width: 28,
     height: 28,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  detailLabel: {
+  rowLabel: { fontSize: 13, color: "#64748b" },
+  rowValue: {
     fontSize: 13,
-    color: COLORS.muted,
-    flexShrink: 0,
-  },
-  detailValue: {
-    fontSize: 14,
     fontWeight: "600",
-    color: COLORS.black,
+    color: "#09090b",
     textAlign: "right",
     flexShrink: 1,
+    maxWidth: "58%",
   },
-  actionBtn: {
+
+  footer: {
+    textAlign: "center",
+    color: "#a1a1aa",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+
+  actions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+  },
+  outlineBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 15,
-    borderRadius: RADIUS.md,
-  },
-  actionOutline: {
-    backgroundColor: COLORS.white,
+    gap: 6,
+    backgroundColor: "#fff",
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderColor: "#e4e4e7",
+    borderRadius: 14,
+    paddingVertical: 14,
   },
-  actionPrimary: {
+  outlineBtnText: { fontSize: 13, fontWeight: "700", color: COLORS.primary },
+  shareBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     backgroundColor: COLORS.primary,
-    shadowColor: "#4f46e5",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: 14,
+    paddingVertical: 14,
+    ...SHADOW.md,
   },
-  actionGhost: { backgroundColor: "transparent" },
-  actionText: { fontSize: 15, fontWeight: "800" },
-  thanks: {
-    textAlign: "center",
-    color: COLORS.subtle,
-    fontSize: 12,
-    marginTop: 6,
+  shareBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
+
+  ussdBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 14,
+    backgroundColor: "#fff",
   },
+  ussdBtnText: { fontSize: 13, fontWeight: "600", color: "#64748b" },
+
+  buyAgain: { alignItems: "center", marginTop: 14, paddingVertical: 10 },
+  buyAgainText: { fontSize: 14, fontWeight: "700", color: COLORS.primary },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 32,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#e2e8f0",
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalTitle: { fontSize: 17, fontWeight: "800", color: COLORS.text, marginBottom: 16 },
+  modalOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: "#f8fafc",
+    marginBottom: 10,
+  },
+  modalIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalOptionTitle: { fontSize: 14, fontWeight: "700", color: "#09090b" },
+  modalOptionSub: { fontSize: 12, color: "#94a3b8", marginTop: 1 },
+  modalCancel: { alignItems: "center", paddingVertical: 12 },
+  modalCancelText: { fontSize: 14, fontWeight: "600", color: "#94a3b8" },
 });
