@@ -191,19 +191,19 @@ function drawReceiptCanvas(tx, siteName, label, st, isDebit, details, token, log
 
   roundRect(ctx, cardX, y, cardW, HEADER_H, 20);
   const grad = ctx.createLinearGradient(cardX, y, cardX + cardW, y + HEADER_H);
-  grad.addColorStop(0, "#0f172a");
-  grad.addColorStop(1, "#1e293b");
+  grad.addColorStop(0, "#4f46e5");
+  grad.addColorStop(1, "#7c3aed");
   ctx.fillStyle = grad;
   ctx.fill();
 
   ctx.save();
   ctx.beginPath();
   ctx.arc(cardX + cardW - 20, y - 20, 60, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(245,158,11,0.06)";
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
   ctx.fill();
   ctx.beginPath();
   ctx.arc(cardX + 20, y + HEADER_H + 20, 45, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(245,158,11,0.04)";
+  ctx.fillStyle = "rgba(255,255,255,0.05)";
   ctx.fill();
   ctx.restore();
 
@@ -215,14 +215,21 @@ function drawReceiptCanvas(tx, siteName, label, st, isDebit, details, token, log
     ctx.save();
     roundRect(ctx, logoX, logoY, logoSize, logoSize, 12);
     ctx.clip();
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = "rgba(15,23,42,0.55)";
     ctx.fillRect(logoX, logoY, logoSize, logoSize);
-    ctx.drawImage(logoImg, logoX + 2, logoY + 2, logoSize - 4, logoSize - 4);
+    ctx.drawImage(logoImg, logoX + 5, logoY + 5, logoSize - 10, logoSize - 10);
     ctx.restore();
+    roundRect(ctx, logoX, logoY, logoSize, logoSize, 12);
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
   } else {
     roundRect(ctx, logoX, logoY, logoSize, logoSize, 12);
-    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    ctx.fillStyle = "rgba(15,23,42,0.55)";
     ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
     ctx.fillStyle = "#fff";
     ctx.font = "bold 22px -apple-system, BlinkMacSystemFont, sans-serif";
     ctx.textAlign = "center";
@@ -238,18 +245,18 @@ function drawReceiptCanvas(tx, siteName, label, st, isDebit, details, token, log
   ctx.fillText(siteName, W / 2, y);
 
   y += 18;
-  ctx.fillStyle = "#f59e0b";
+  ctx.fillStyle = "rgba(255,255,255,0.88)";
   ctx.font = "700 10px -apple-system, BlinkMacSystemFont, sans-serif";
   ctx.fillText("TRANSACTION RECEIPT", W / 2, y);
 
   y += 24;
-  ctx.fillStyle = "#f59e0b";
+  ctx.fillStyle = "#fff";
   ctx.font = "900 30px -apple-system, BlinkMacSystemFont, sans-serif";
   ctx.fillText((isDebit ? "-" : "+") + fmtNaira(tx.amount), W / 2, y);
 
   y += 20;
-  const badgeColor = st.cls === "badge-success" ? "#10b981" : st.cls === "badge-failed" ? "#ef4444" : "#f59e0b";
-  const badgeBg = st.cls === "badge-success" ? "rgba(16,185,129,0.15)" : st.cls === "badge-failed" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)";
+  const badgeColor = "#fff";
+  const badgeBg = "rgba(255,255,255,0.18)";
   ctx.font = "700 11px -apple-system, BlinkMacSystemFont, sans-serif";
   const badgeW = ctx.measureText(st.label).width + 36;
   const badgeH = 24;
@@ -261,7 +268,7 @@ function drawReceiptCanvas(tx, siteName, label, st, isDebit, details, token, log
   ctx.fillText("\u2713  " + st.label, W / 2, y + badgeH / 2);
 
   y += badgeH + 14;
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.font = "500 11px -apple-system, BlinkMacSystemFont, sans-serif";
   ctx.fillText(fmtDate(tx.date || tx.createdAt), W / 2, y);
 
@@ -270,12 +277,12 @@ function drawReceiptCanvas(tx, siteName, label, st, isDebit, details, token, log
   if (token) {
     const tokH = 56;
     roundRect(ctx, cardX, y, cardW, tokH, 14);
-    ctx.fillStyle = "#fffbeb";
+    ctx.fillStyle = "#eef2ff";
     ctx.fill();
-    ctx.strokeStyle = "#f59e0b";
+    ctx.strokeStyle = "#4f46e5";
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    ctx.fillStyle = "#92400e";
+    ctx.fillStyle = "#4338ca";
     ctx.font = "700 9px -apple-system, BlinkMacSystemFont, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("PREPAID TOKEN", W / 2, y + 16);
@@ -490,7 +497,7 @@ export default function ReceiptView({ tx, showPrint = true }) {
     <div className="receipt-sheet">
       <div
         style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+          background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
           borderRadius: "1.25rem",
           padding: "2rem 1.25rem 1.5rem",
           textAlign: "center",
@@ -499,45 +506,45 @@ export default function ReceiptView({ tx, showPrint = true }) {
           overflow: "hidden",
         }}
       >
-        <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: "50%", background: "rgba(245,158,11,.06)" }} />
-        <div style={{ position: "absolute", bottom: -30, left: -30, width: 100, height: 100, borderRadius: "50%", background: "rgba(245,158,11,.04)" }} />
+        <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,.07)" }} />
+        <div style={{ position: "absolute", bottom: -30, left: -30, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,.05)" }} />
 
         {settings.logoUrl ? (
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", padding: 4, position: "relative" }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(15,23,42,.55)", border: "1px solid rgba(255,255,255,.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", padding: 6, position: "relative" }}>
             <img src={settings.logoUrl} alt={siteName} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           </div>
         ) : (
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(255,255,255,.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", color: "#fff", fontWeight: 900, fontSize: 20, position: "relative" }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(15,23,42,.55)", border: "1px solid rgba(255,255,255,.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", color: "#fff", fontWeight: 900, fontSize: 20, position: "relative" }}>
             {siteName.charAt(0)}
           </div>
         )}
 
         <div style={{ color: "rgba(255,255,255,.9)", fontSize: ".85rem", fontWeight: 700, position: "relative" }}>{siteName}</div>
-        <div style={{ color: "#f59e0b", fontSize: ".68rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", margin: "4px 0 12px", position: "relative" }}>
+        <div style={{ color: "rgba(255,255,255,.88)", fontSize: ".68rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", margin: "4px 0 12px", position: "relative" }}>
           Transaction Receipt
         </div>
-        <div style={{ fontWeight: 900, fontSize: "2rem", letterSpacing: "-.03em", color: "#f59e0b", margin: "0 0 10px", position: "relative" }}>
+        <div style={{ fontWeight: 900, fontSize: "2rem", letterSpacing: "-.03em", color: "#fff", margin: "0 0 10px", position: "relative" }}>
           {fmtNaira(tx.amount)}
         </div>
         <div
           style={{
             display: "inline-flex", alignItems: "center", gap: 5,
-            background: st.cls === "badge-success" ? "rgba(16,185,129,.15)" : st.cls === "badge-failed" ? "rgba(239,68,68,.15)" : "rgba(245,158,11,.15)",
-            color: st.cls === "badge-success" ? "#34d399" : st.cls === "badge-failed" ? "#f87171" : "#fbbf24",
+            background: "rgba(255,255,255,.18)",
+            color: "#fff",
             padding: "5px 16px", borderRadius: 99, fontSize: ".75rem", fontWeight: 700, position: "relative",
           }}
         >
           <CheckCircle2 size={14} />
           {st.label}
         </div>
-        <div style={{ color: "rgba(255,255,255,.45)", fontSize: ".72rem", marginTop: 10, position: "relative" }}>
+        <div style={{ color: "rgba(255,255,255,.55)", fontSize: ".72rem", marginTop: 10, position: "relative" }}>
           {fmtDate(tx.date || tx.createdAt)}
         </div>
       </div>
 
       {parsed.token && (
-        <div style={{ border: "1.5px solid #f59e0b", background: "#fffbeb", borderRadius: "1rem", padding: ".85rem 1rem", textAlign: "center", marginBottom: "1rem" }}>
-          <div style={{ fontSize: ".65rem", color: "#92400e", fontWeight: 700, letterSpacing: "1px", marginBottom: 4 }}>PREPAID TOKEN</div>
+        <div style={{ border: "1.5px solid #4f46e5", background: "#eef2ff", borderRadius: "1rem", padding: ".85rem 1rem", textAlign: "center", marginBottom: "1rem" }}>
+          <div style={{ fontSize: ".65rem", color: "#4338ca", fontWeight: 700, letterSpacing: "1px", marginBottom: 4 }}>PREPAID TOKEN</div>
           <div style={{ fontSize: ".9rem", fontWeight: 700, color: "#09090b", fontFamily: "'Courier New', monospace", letterSpacing: ".5px", wordBreak: "break-all" }}>
             {parsed.token}
           </div>
