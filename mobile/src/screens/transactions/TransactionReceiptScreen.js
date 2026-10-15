@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -8,12 +8,14 @@ import {
   ActivityIndicator,
   Share,
   Image,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { captureRef } from "react-native-view-shot";
 import Toast from "react-native-toast-message";
 import client from "../../api/client";
 import { COLORS, RADIUS, SHADOW } from "../../constants/theme";
@@ -125,6 +127,8 @@ export default function TransactionReceiptScreen({ navigation, route }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [siteName, setSiteName] = useState("Kiru Data");
   const [sharing, setSharing] = useState(false);
+  const [shareModal, setShareModal] = useState(false);
+  const shotRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -255,26 +259,53 @@ export default function TransactionReceiptScreen({ navigation, route }) {
     </body></html>`;
   };
 
-  const shareReceipt = async () => {
+  const shareFile = async (uri, mimeType) => {
+    const fileUri = toFileUri(uri);
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(fileUri, {
+        mimeType,
+        dialogTitle: "Share Receipt",
+        UTI: mimeType === "application/pdf" ? "com.adobe.pdf" : "public.png",
+      });
+    } else {
+      await Share.share({ url: fileUri });
+    }
+  };
+
+  const shareAsImage = async () => {
+    if (!tx || !shotRef.current) return;
+    setShareModal(false);
+    try {
+      setSharing(true);
+      const uri = await captureRef(shotRef, { format: "png", quality: 1 });
+      await shareFile(uri, "image/png");
+      Toast.show({ type: "success", text1: "Receipt ready to share" });
+    } catch (e) {
+      console.error(e);
+      const missingNative = String(e && e.message).includes("RNViewShot");
+      Toast.show({
+        type: "error",
+        text1: missingNative
+          ? "Please update the app to share as image"
+          : "Could not create image",
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const shareAsPdf = async () => {
     if (!tx) return;
+    setShareModal(false);
     try {
       setSharing(true);
       const html = buildReceiptHTML();
       const { uri } = await Print.printToFileAsync({ html, base64: false });
-      const fileUri = toFileUri(uri);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: "application/pdf",
-          dialogTitle: "Share Receipt",
-          UTI: "com.adobe.pdf",
-        });
-      } else {
-        await Share.share({ url: fileUri });
-      }
+      await shareFile(uri, "application/pdf");
       Toast.show({ type: "success", text1: "Receipt ready to share" });
     } catch (e) {
       console.error(e);
-      Toast.show({ type: "error", text1: "Failed to generate receipt" });
+      Toast.show({ type: "error", text1: "Failed to generate PDF" });
     } finally {
       setSharing(false);
     }
@@ -301,7 +332,8 @@ export default function TransactionReceiptScreen({ navigation, route }) {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
-        <LinearGradient colors={["#4f46e5", "#7c3aed"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+        <View ref={shotRef} collapsable={false}>
+          <LinearGradient colors={["#4f46e5", "#7c3aed"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
             <View style={styles.heroCircle1} />
             <View style={styles.heroCircle2} />
 
@@ -360,6 +392,7 @@ export default function TransactionReceiptScreen({ navigation, route }) {
           <Text style={styles.footer}>
             <Text>{"\u{1F6E1}\uFE0F"}</Text> Secured & verified by {siteName}
           </Text>
+        </View>
 
         <View style={styles.actions}>
           <TouchableOpacity
@@ -371,7 +404,7 @@ export default function TransactionReceiptScreen({ navigation, route }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={shareReceipt}
+            onPress={() => setShareModal(true)}
             disabled={sharing}
             style={[styles.shareBtn, sharing && { opacity: 0.7 }]}
           >
@@ -396,6 +429,38 @@ export default function TransactionReceiptScreen({ navigation, route }) {
         </TouchableOpacity>
       </ScrollView>
 
+      <Modal transparent visible={shareModal} animationType="slide" onRequestClose={() => setShareModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShareModal(false)}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Share Receipt</Text>
+
+            <TouchableOpacity onPress={shareAsImage} style={styles.modalOption}>
+              <View style={[styles.modalIcon, { backgroundColor: "#eef2ff" }]}>
+                <Ionicons name="image" size={20} color="#4f46e5" />
+              </View>
+              <View>
+                <Text style={styles.modalOptionTitle}>Share as Image</Text>
+                <Text style={styles.modalOptionSub}>Save the receipt as a picture</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={shareAsPdf} style={styles.modalOption}>
+              <View style={[styles.modalIcon, { backgroundColor: "#eef2ff" }]}>
+                <Ionicons name="document-text" size={20} color="#4f46e5" />
+              </View>
+              <View>
+                <Text style={styles.modalOptionTitle}>Share as PDF</Text>
+                <Text style={styles.modalOptionSub}>Formatted document receipt</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setShareModal(false)} style={styles.modalCancel}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -606,4 +671,47 @@ const styles = StyleSheet.create({
   buyAgain: { alignItems: "center", marginTop: 14, paddingVertical: 10 },
   buyAgainText: { fontSize: 14, fontWeight: "700", color: COLORS.primary },
 
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 32,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#e2e8f0",
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalTitle: { fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 16 },
+  modalOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: "#f8fafc",
+    marginBottom: 10,
+  },
+  modalIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalOptionTitle: { fontSize: 14, fontWeight: "700", color: "#09090b" },
+  modalOptionSub: { fontSize: 12, color: "#94a3b8", marginTop: 1 },
+  modalCancel: { alignItems: "center", paddingVertical: 12 },
+  modalCancelText: { fontSize: 14, fontWeight: "600", color: "#94a3b8" },
 });
+
