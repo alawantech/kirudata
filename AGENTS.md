@@ -1,4 +1,4 @@
-# AGENTS.md — Guchor Data Platform
+# AGENTS.md — Kiru Data Platform
 
 > **Single source of truth for the entire project.**
 > Any AI agent working on this project MUST read this file first.
@@ -8,7 +8,7 @@
 
 ## 1. Project Overview
 
-**Guchor Data** is a VTU (Virtual Top-Up) fintech platform where users buy airtime, data, cable TV, electricity, exam pins, bulk SMS, data cards, recharge cards, and convert airtime to cash.
+**Kiru Data** is a VTU (Virtual Top-Up) fintech platform where users buy airtime, data, cable TV, electricity, exam pins, bulk SMS, data cards, recharge cards, and convert airtime to cash.
 
 ### Platforms
 | Platform | Tech Stack | Location |
@@ -19,7 +19,7 @@
 | Admin Panel | Next.js (part of frontend) | `frontend/src/app/admin/` |
 
 ### Live URL
-- **Production**: `https://guchordata.com`
+- **Production**: `https://kirudata.com`
 
 ---
 
@@ -36,20 +36,20 @@ Browser/Mobile → Cloudflare (DDoS/WAF) → Nginx (SSL/Proxy)
 ### PM2 Processes
 | Name | Port | Start Command |
 |------|------|---------------|
-| `frontend` | 3000 | `next start` (in `frontend/`) |
-| `guchor-backend` | 5000 | `node server.js` (in `backend/`) |
+| `kiru-frontend` | 3000 | `next start` (in `frontend/`) |
+| `kiru-backend` | 5000 | `node server.js` (in `backend/`) |
 
 ### Key Environment Variables (Backend `.env`)
 - `DATABASE_URL` — PostgreSQL connection string
 - `JWT_SECRET` — Auth JWT secret
 - `MAILERSEND_API_KEY` — Email service API key
-- `MAILERSEND_FROM_EMAIL` — Sender email (`noreply@guchordata.com`)
+- `MAILERSEND_FROM_EMAIL` — Sender email (`noreply@kirudata.com`)
 - `ADMIN_REFRESH_SECRET` — Refresh token JWT secret (falls back to `JWT_SECRET + "-refresh"`)
 - `COOKIE_SECRET` — Cookie parser secret
-- `FRONTEND_URL` — CORS origin (`https://guchordata.com`)
+- `FRONTEND_URL` — CORS origin (`https://kirudata.com`)
 
 ### Key Environment Variables (Frontend `.env.local`)
-- `NEXT_PUBLIC_API_URL` — Backend API URL (`https://guchordata.com/api`)
+- `NEXT_PUBLIC_API_URL` — Backend API URL (`https://kirudata.com/api`)
 
 ---
 
@@ -57,16 +57,16 @@ Browser/Mobile → Cloudflare (DDoS/WAF) → Nginx (SSL/Proxy)
 
 ### Connection
 - **Host**: `localhost:5432`
-- **Database**: `guchor_data`
-- **User**: `guchor_user`
-- **Password**: `GuchorDB2026Secure`
+- **Database**: `kiru_data`
+- **User**: `zedro_user`
+- **Password**: In server `.env` (`DATABASE_URL`)
 
 ### Schema Location
 `backend/prisma/schema.prisma`
 
 ### Push Schema to DB
 ```bash
-ssh root@162.35.162.189 "cd /var/www/guchor-monie/backend && npx prisma db push --skip-generate && npx prisma generate"
+ssh root@163.245.204.115 "cd /var/www/kirudata/backend && npx prisma db push --skip-generate && npx prisma generate"
 ```
 
 ### Key Models
@@ -214,7 +214,7 @@ These use `protectAdmin` from `auth.js` (cookie or Bearer fallback).
 `dashboard_view`, `users_view`, `users_edit`, `users_credit`, `users_debit`, `users_reset_pin`, `users_reset_password`, `transactions_view`, `transactions_edit`, `notifications_manage`, `issues_manage`, `messages_manage`, `networks_manage`, `data_plans_manage`, `provider_data_plans_manage`, `data_card_plans_manage`, `recharge_card_plans_manage`, `cable_plans_manage`, `electricity_manage`, `exam_providers_manage`, `airtime_discounts_manage`, `airtime_to_cash_manage`, `api_configs_manage`, `api_links_manage`, `settings_manage`, `blacklist_manage`, `upgrade_requests_manage`, `kyc_manage`, `admin_manage`
 
 ### Super Admin
-- **Email**: `guchordata90@gmail.com`
+- **Email**: `admin@kirudata.com`
 - **Password**: `Admin@12345`
 - **Role**: `super_admin` (bypasses all permission checks)
 - **Session Timeout**: 30 minutes
@@ -339,19 +339,19 @@ These use `protectAdmin` from `auth.js` (cookie or Bearer fallback).
 
 ### mySubwallet API
 - **Base URL**: `https://api.mysubwallet.ng/api/`
-- **Auth**: POST Basic auth (`guchordata:4632Je#@!$`) → `AccessToken` → `Token ${AccessToken}`
+- **Auth**: POST Basic auth (`kirudata:kirudata4632Je@#$&+=`) → `AccessToken` → `Token ${AccessToken}`
 - **Data format**: Auth token in header, string `plan_type` for data/recharge cards
 
 ### MailerSend
 - **API**: `https://api.mailersend.com/v1/email`
-- **From**: `noreply@guchordata.com`
+- **From**: `noreply@kirudata.com`
 - **Purpose**: OTP emails (login, password reset, PIN reset, login notifications)
 
 ### Cloudflare
 - **Plan**: Free
 - **SSL**: Full
 - **WAF**: 5 rules (skip admin routes, bot filtering, etc.)
-- **DNS**: A record → `162.35.162.189`
+- **DNS**: A record → `163.245.204.115`
 
 ### Monnify
 - **Purpose**: Dedicated virtual accounts for wallet funding (requires BVN/NIN)
@@ -369,33 +369,29 @@ These use `protectAdmin` from `auth.js` (cookie or Bearer fallback).
 ## 10. Deployment
 
 ### Server
-- **IP**: `162.35.162.189`
-- **SSH**: `ssh root@162.35.162.189`
-- **Provider**: InterServer
-- **App Directory**: `/var/www/guchor-monie`
+- **IP**: `163.245.204.115`
+- **SSH**: `ssh root@163.245.204.115`
+- **Provider**: InterServer (VPS `vps3613193`, KVM475, $3/mo)
+- **App Directory**: `/var/www/kirudata`
 - **Deploy User**: `root`
-
-### First-Time Server Setup
-```bash
-ssh root@162.35.162.189
-bash /var/www/guchor-monie/migration/setup-new-server.sh
-# Then edit .env: nano /var/www/guchor-monie/backend/.env
-# Then run: bash /var/www/guchor-monie/migration/final-setup.sh
-```
+- **Node.js**: v20.20.2
+- **PostgreSQL**: 16.15
+- **SSL**: Let's Encrypt (`/etc/letsencrypt/live/kirudata.com`)
+- **Nginx**: `/etc/nginx/sites-enabled/kirudata`
 
 ### Deploy Commands
 ```bash
 # Full deploy (backend + frontend)
-ssh root@162.35.162.189 "cd /var/www/guchor-monie && git pull && cd backend && npx prisma db push --skip-generate && npx prisma generate && cd ../frontend && npm run build && pm2 restart frontend && pm2 restart guchor-backend"
+ssh root@163.245.204.115 "cd /var/www/kirudata && git pull && cd backend && npx prisma db push --skip-generate && npx prisma generate && cd ../frontend && npm run build && pm2 restart kiru-frontend && pm2 restart kiru-backend"
 
 # Backend only (no frontend rebuild)
-ssh root@162.35.162.189 "cd /var/www/guchor-monie && git pull && pm2 restart guchor-backend"
+ssh root@163.245.204.115 "cd /var/www/kirudata && git pull && pm2 restart kiru-backend"
 
 # Frontend only
-ssh root@162.35.162.189 "cd /var/www/guchor-monie && git pull && cd frontend && npm run build && pm2 restart frontend"
+ssh root@163.245.204.115 "cd /var/www/kirudata && git pull && cd frontend && npm run build && pm2 restart kiru-frontend"
 
 # After schema changes
-ssh root@162.35.162.189 "cd /var/www/guchor-monie && git pull && cd backend && npx prisma db push --skip-generate && npx prisma generate && cd ../frontend && npm run build && pm2 restart frontend && pm2 restart guchor-backend"
+ssh root@163.245.204.115 "cd /var/www/kirudata && git pull && cd backend && npx prisma db push --skip-generate && npx prisma generate && cd ../frontend && npm run build && pm2 restart kiru-frontend && pm2 restart kiru-backend"
 ```
 
 ### **CRITICAL: Frontend requires `npm run build`**
@@ -404,7 +400,7 @@ The frontend runs `next start` (production build). Every frontend change MUST:
 2. `cd frontend && npm run build`
 3. `pm2 restart frontend`
 
-Backend changes only need `pm2 restart guchor-backend` (plain Node.js).
+Backend changes only need `pm2 restart kiru-backend` (plain Node.js).
 
 ### Mobile App — OTA Updates (EAS Update)
 Published under Expo account/project `kiru-data` (project ID `ff5e6b07-f55a-4814-9db7-1446b013d7d6`, Android package `com.kirudata.app`). `expo-updates` is configured in `mobile/app.json` with `runtimeVersion.policy = "appVersion"` and `updates.url = https://u.expo.dev/<projectId>`. `mobile/eas.json` binds each profile to a channel: `development` / `preview` / `production`. Build auth for the `kiru-data` account is a session token (`EXPO_TOKEN`) — the default local CLI login may point at a different Expo account, so always export `EXPO_TOKEN` for Kiru commands.
@@ -528,6 +524,7 @@ git push origin main
 | 2026-10-13 | **New USSD Codes screen + USSD Enquiry entry points (all 4 mobile apps)** — dedicated `src/screens/UssdCodesScreen.js` lists per-network codes (MTN / AIRTEL / GLO / 9MOBILE: check number, check balance, check data usage including Gifting and SME) grouped under logo + name sections; tapping a row copies the code to the clipboard (expo-clipboard, already a dependency) and toasts it. Registered as `UssdCodes` in ServicesStack, HomeStack and the root AppStack so `navigation.navigate("UssdCodes")` works from anywhere including the receipt. Reusable `UssdEnquiryRow` component added and placed at the bottom of Buy Data and Buy Airtime; the receipt gained a "Check balance with USSD" outline button between Save/Share and Buy Another. Codes were transcribed from the supplied reference screens — edit the USSD array in that file to correct any. `expo export` bundles clean x4. | §4, §6, §7, §13 | Repo pushed; needs a fresh EAS build. |
 | 2026-10-14 | **Kiru mobile: EAS Update (OTA) enabled + SDK 57 preview APK + both channels baselined** — the earlier builds (2026-10-10 and 2026-10-13 14:48) had `channel: None` and `runtime: None`, so they could never receive an OTA update. Ran `eas update:configure` (adds `runtimeVersion.policy = appVersion` + `updates.url` for project `ff5e6b07-f55a-4814-9db7-1446b013d7d6`), de-duplicated the contacts permissions it re-added in `app.json`, added `channel` bindings in `eas.json` (development/preview/production), committed `45e1311`. Built the SDK 57 preview APK (build `6bf7532d`, versionCode 1, `updateChannel = preview`, `runtime = 1.0.0`): https://expo.dev/artifacts/eas/QqJEFhi69CKVDJH7WyUd1_Wg0Dat1mX4evuHxt1o6Xk.apk. Published baseline OTA updates to **both** channels so the pipeline is warm whenever Kiru reaches the Play Store — `preview` group `9e77feba-e369-40cc-9ac0-889f6d34fe9c`, `production` group `616480fc-d426-4bdf-8673-4282d7fcf55e`. Kiru is not on the Play Store yet: when it goes up, build the `production` profile (its OTA config is already committed) and thereafter publish every JS-only change with the same `eas update` command. | §7, §10, §13 | Auth is `EXPO_TOKEN`; no Play upload yet. |
 | 2026-10-14 | **Kiru mobile: production AAB built for the future Play Store release** — build `4ef0fa76`, Expo SDK 57, profile `production`, `distribution = STORE`, `updateChannel = production`, `runtime = 1.0.0`, versionCode auto-incremented 1 → **2**: https://expo.dev/artifacts/eas/x7ogbWBx2fvMbm-PQrSUxO7LkD-CediXvzrsLUjzy6w.aab. Kiru has never been on the Play Store, so this is the candidate for the first release: create the app in Play Console, enroll in Play App Signing (the upload key is the EAS-managed keystore `0q4agTzv3E`), upload the AAB, roll out. The `production` OTA baseline is already live (group `616480fc-d426-4bdf-8673-4282d7fcf55e`), so from the first install every later JS-only change is a one-command `eas update` push with no store visit. `app.json` still declares an `android.versionCode` that the remote version source ignores — harmless, but removable. | §7, §13 | No Play Console app created yet. |
+| 2026-10-15 | **Server recovery + AGENTS.md corrected (was entirely Guchor's)** — root password was lost; after a failed reinstall + full-disk restore via InterServer panel (3 × 15 GB ZFS snapshots, latest 04:49), the server was recovered via InterServer support ticket (root reset to `Ni3-R0=V7`). SSH key `~/.ssh/id_ed25519` reinstalled for permanent access. Verified after restore: PM2 `kiru-backend` + `kiru-frontend` online, PostgreSQL 16.15 active, Nginx active, all 77 data plans + settings + networks intact, site 200. Deployed 55 missing commits (through `6d4a1a6`), rebuilt frontend, `/delete-account` now live (HTTP 200, in sitemap). **Fixed AGENTS.md**: was an entire copy of Guchor's file — title, overview, live URL, PM2 names (`guchor-backend`→`kiru-backend`, `frontend`→`kiru-frontend`), database (`guchor_data`/`guchor_user`→`kiru_data`/`zedro_user`), server IP (`162.35.162.189`→`163.245.204.115`), app dir (`/var/www/guchor-monie`→`/var/www/kirudata`), deploy commands, DNS, MailerSend from-email, super-admin email (`guchordata90@gmail.com`→`admin@kirudata.com`), mySubwallet auth (`guchordata:…`→`kirudata:…`). Server now at `/var/www/kirudata`, Node v20.20.2, SSL via Let's Encrypt, nginx conf at `/etc/nginx/sites-enabled/kirudata`. | §1, §2, §3, §9, §10, §13 | Deployed to Kiru VPS. |
 
 ---
 
