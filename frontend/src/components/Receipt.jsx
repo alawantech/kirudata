@@ -18,6 +18,7 @@ import {
   Loader2,
   Hash,
   Calendar,
+  Clock,
   FileText,
   MapPin,
   User,
@@ -49,6 +50,7 @@ const ROW_ICON_MAP = {
   Description: FileText,
   Amount: Wallet,
   Date: Calendar,
+  Validity: Clock,
   Token: Zap,
   Meter: Hash,
   "Meter Type": Info,
@@ -65,6 +67,7 @@ const ROW_ICON_COLOR = {
   Description: "#a78bfa",
   Amount: "#4f46e5",
   Date: "#64748b",
+  Validity: "#0d9488",
   Token: "#d97706",
   Meter: "#0891b2",
   "Meter Type": "#0891b2",
@@ -413,7 +416,7 @@ export default function ReceiptView({ tx, showPrint = true }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const settings = useSiteSettings();
-  const siteName = settings.sitename || "Gwarzo Data Sub";
+  const siteName = settings.sitename || "Kiru Data";
 
   const category = tx.category || "other";
   const { label } = getSvcMeta(category, tx.servicename);
@@ -438,9 +441,10 @@ export default function ReceiptView({ tx, showPrint = true }) {
         { label: "Reference", value: tx.transref || tx.ref || "\u2014", mono: true },
         { label: "Service", value: tx.servicename || label },
         { label: "Description", value: tx.servicedesc || "\u2014" },
+        tx.validity && { label: "Validity", value: tx.validity },
         { label: "Amount", value: fmtNaira(tx.amount), highlight: true },
         { label: "Date", value: fmtDate(tx.date || tx.createdAt) },
-      ];
+      ].filter(Boolean);
 
   useEffect(() => {
     if (!menuOpen) return;

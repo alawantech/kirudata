@@ -5,6 +5,76 @@ const bcrypt = require("bcryptjs");
 const { sendSuccess, sendError } = require("../helpers/response");
 const monnifyService = require("../services/monnify.service");
 
+function formatValidity(raw) {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  const n = parseInt(s, 10);
+  if (String(n) === s) {
+    if (n === 1) return "1 day";
+    if (n === 7) return "1 week";
+    if (n === 30) return "1 month";
+    return n + " days";
+  }
+  return s;
+}
+
+function parseDataDesc(desc) {
+  if (!desc) return null;
+  const cleaned = String(desc).replace(/\s+-\s+\d{7,11}$/, "");
+  const sp = cleaned.indexOf(" ");
+  if (sp < 1) return null;
+  const net = cleaned.slice(0, sp).trim();
+  const plan = cleaned.slice(sp + 1).trim();
+  if (!net || !plan) return null;
+  return { net: net.toUpperCase(), plan };
+}
+
+async function attachDataValidity(transactions) {
+  try {
+    const dataTx = (transactions || []).filter(
+      (t) => t && (t.servicename || "").toLowerCase() === "data",
+    );
+    if (!dataTx.length) return;
+    const parsed = [];
+    for (const t of dataTx) {
+      const p = parseDataDesc(t.servicedesc);
+      if (p) parsed.push({ t, p });
+    }
+    if (!parsed.length) return;
+    const nets = await prisma.network.findMany({ select: { id: true, name: true } });
+    const netByUpper = new Map(nets.map((n) => [(n.name || "").toUpperCase(), n.id]));
+    const planNames = [...new Set(parsed.map((x) => x.p.plan))];
+    const plans = await prisma.providerDataPlan.findMany({
+      where: { name: { in: planNames } },
+      select: {
+        name: true,
+        networkId: true,
+        validity: true,
+        userPrice: true,
+        vendorPrice: true,
+      },
+    });
+    for (const { t, p } of parsed) {
+      const netId = netByUpper.get(p.net);
+      if (!netId) continue;
+      const amt = parseFloat(t.amount);
+      let cands = plans.filter((r) => r.networkId === netId && r.name === p.plan);
+      if (!cands.length) continue;
+      const priced = cands.filter(
+        (r) =>
+          Math.abs(parseFloat(r.userPrice) - amt) < 0.5 ||
+          Math.abs(parseFloat(r.vendorPrice) - amt) < 0.5,
+      );
+      if (priced.length) cands = priced;
+      const vals = [...new Set(cands.map((r) => formatValidity(r.validity)).filter(Boolean))];
+      if (vals.length === 1) t.validity = vals[0];
+    }
+  } catch (e) {
+    console.log("attachDataValidity failed:", e.message);
+  }
+}
+
 async function getProfile(req, res) {
   const user = await UserModel.findById(req.user.id);
   if (!user) return sendError(res, "User not found.", 404);
@@ -27,6 +97,7 @@ async function getTransactions(req, res) {
     limit,
     offset,
   );
+  await attachDataValidity(transactions);
   return sendSuccess(res, { transactions, page });
 }
 
@@ -46,6 +117,7 @@ async function getTransactionDetail(req, res) {
   else if (name.includes("wallet") || name.includes("fund")) category = "wallet";
   else if (name.includes("card")) category = "card";
   else if (name.includes("pin")) category = "pin";
+  await attachDataValidity([tx]);
   return sendSuccess(res, { transaction: { ...tx, category } });
 }
 

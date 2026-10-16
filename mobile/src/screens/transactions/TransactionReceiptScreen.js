@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 import { captureRef } from "react-native-view-shot";
 import Toast from "react-native-toast-message";
 import client from "../../api/client";
@@ -178,9 +179,10 @@ export default function TransactionReceiptScreen({ navigation, route }) {
           { label: "Reference", value: tx.transref || tx.ref, mono: true },
           { label: "Service", value: tx.servicename || svc.label },
           { label: "Description", value: tx.servicedesc || "\u2014" },
+          tx.validity && { label: "Validity", value: tx.validity },
           { label: "Amount", value: fmt(tx.amount), highlight: true },
           { label: "Date", value: fmtDate(tx.date || tx.createdAt) },
-        ]
+        ].filter(Boolean)
     : [];
 
   const rowIcon = (label) => {
@@ -208,6 +210,8 @@ export default function TransactionReceiptScreen({ navigation, route }) {
         return "information-circle";
       case "Service":
         return "grid";
+      case "Validity":
+        return "time";
       default:
         return "document-text";
     }
@@ -301,8 +305,45 @@ export default function TransactionReceiptScreen({ navigation, route }) {
       setSharing(true);
       const html = buildReceiptHTML();
       const { uri } = await Print.printToFileAsync({ html, base64: false });
-      await shareFile(uri, "application/pdf");
-      Toast.show({ type: "success", text1: "Receipt ready to share" });
+      if (!uri) throw new Error("No PDF produced");
+      const label =
+        String(tx.transref || tx.ref || "transaction").replace(/[^A-Za-z0-9_-]/g, "") ||
+        "transaction";
+      const attempts = [uri];
+      const dirs = [FileSystem.cacheDirectory, FileSystem.documentDirectory];
+      for (const dir of dirs) {
+        if (!dir) continue;
+        try {
+          const dest = dir + "Receipt-" + label + ".pdf";
+          const info = await FileSystem.getInfoAsync(dest).catch(() => null);
+          if (info && info.exists)
+            await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
+          await FileSystem.copyAsync({ from: uri, to: dest });
+          attempts.push(dest);
+        } catch (e) {
+          console.log("[receipt] copy failed:", dir, e && e.message);
+        }
+      }
+      let shared = false;
+      for (const a of attempts) {
+        try {
+          await shareFile(a, "application/pdf");
+          shared = true;
+          break;
+        } catch (e) {
+          if (e && e.name === "AbortError") {
+            shared = true;
+            break;
+          }
+          console.log("[receipt] share failed:", a, e && e.message);
+        }
+      }
+      if (shared) {
+        Toast.show({ type: "success", text1: "Receipt ready to share" });
+      } else {
+        await Print.printAsync({ uri });
+        Toast.show({ type: "info", text1: "Save or share the PDF from the print screen" });
+      }
     } catch (e) {
       console.error(e);
       Toast.show({ type: "error", text1: "Failed to generate PDF" });
