@@ -93,7 +93,7 @@ function detectAuthType(host) {
   if (host.includes("mysubwallet.ng")) return "subwallet";
   if (host.includes("vtpass")) return "vtpass";
   if (host.includes("mbcdata.com")) return "token";
-  if (host.includes("dorosub.com")) return "token";
+  if (host.includes("dorosub.com")) return "basic";
   return "basic";
 }
 
