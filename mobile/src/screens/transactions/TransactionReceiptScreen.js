@@ -8,14 +8,11 @@ import {
   ActivityIndicator,
   Share,
   Image,
-  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
 import { captureRef } from "react-native-view-shot";
 import Toast from "react-native-toast-message";
 import client from "../../api/client";
@@ -128,7 +125,6 @@ export default function TransactionReceiptScreen({ navigation, route }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [siteName, setSiteName] = useState("Kiru Data");
   const [sharing, setSharing] = useState(false);
-  const [shareModal, setShareModal] = useState(false);
   const shotRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -224,45 +220,6 @@ export default function TransactionReceiptScreen({ navigation, route }) {
     return "#6366f1";
   };
 
-  const buildReceiptHTML = () => {
-    if (!tx) return "";
-    let tokenHTML = "";
-    if (pd.token) {
-      tokenHTML = `
-        <div style="border:2px solid #4f46e5;background:#eef2ff;border-radius:14px;padding:14px;text-align:center;margin:0 20px 14px;">
-          <div style="font-size:10px;color:#4338ca;font-weight:700;letter-spacing:1.5px;margin-bottom:4px;">PREPAID TOKEN</div>
-          <div style="font-size:16px;font-weight:700;color:#09090b;font-family:monospace;">${pd.token}</div>
-        </div>`;
-    }
-
-    let detailsHTML = "";
-    rows.forEach((r, i) => {
-      const border = i < rows.length - 1 ? "border-bottom:1px solid #f1f5f9;" : "";
-      const weight = r.highlight ? "font-weight:900;font-size:15px;" : "font-weight:600;font-size:13px;";
-      const mono = r.mono ? "font-family:monospace;font-size:12px;" : "";
-      detailsHTML += `<tr><td style="padding:11px 16px;${border}color:#64748b;font-size:13px;">${r.label}</td><td style="padding:11px 16px;${border}${weight}${mono}text-align:right;color:#09090b;">${r.value}</td></tr>`;
-    });
-
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:16px;background:#f8fafc;}</style></head><body>
-      <div style="max-width:400px;margin:0 auto;">
-        <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:20px;padding:28px 20px 22px;text-align:center;position:relative;overflow:hidden;">
-          <div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,0.07);"></div>
-          ${logoUrl ? `<div style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.15);border-radius:14px;width:52px;height:52px;margin:0 auto 8px;padding:6px;display:flex;align-items:center;justify-content:center;"><img src="${logoUrl}" style="width:100%;height:100%;object-fit:contain;" /></div>` : `<div style="width:52px;height:52px;border-radius:14px;background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.15);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:22px;font-weight:900;">${siteName.charAt(0)}</span></div>`}
-          <div style="color:rgba(255,255,255,.9);font-size:14px;font-weight:700;">${siteName}</div>
-          <div style="color:rgba(255,255,255,.88);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:4px 0 12px;">Transaction Receipt</div>
-          <div style="color:#fff;font-size:34px;font-weight:900;letter-spacing:-1px;">${fmt(tx.amount)}</div>
-          <div style="display:inline-block;background:rgba(255,255,255,0.18);color:#fff;padding:5px 18px;border-radius:99px;margin-top:10px;font-size:12px;font-weight:700;">&#10003; ${st.label}</div>
-          <div style="color:rgba(255,255,255,.55);font-size:12px;margin-top:10px;">${fmtDate(tx.date || tx.createdAt)}</div>
-        </div>
-        ${tokenHTML}
-        <div style="background:#fff;border-radius:16px;overflow:hidden;margin-top:14px;">
-          <table style="width:100%;border-collapse:collapse;">${detailsHTML}</table>
-        </div>
-        <div style="text-align:center;padding:14px;color:#a1a1aa;font-size:11px;font-weight:600;">&#128737; Secured &amp; verified by ${siteName}</div>
-      </div>
-    </body></html>`;
-  };
-
   const shareFile = async (uri, mimeType) => {
     const fileUri = toFileUri(uri);
     if (await Sharing.isAvailableAsync()) {
@@ -278,7 +235,6 @@ export default function TransactionReceiptScreen({ navigation, route }) {
 
   const shareAsImage = async () => {
     if (!tx || !shotRef.current) return;
-    setShareModal(false);
     try {
       setSharing(true);
       const uri = await captureRef(shotRef, { format: "png", quality: 1 });
@@ -293,60 +249,6 @@ export default function TransactionReceiptScreen({ navigation, route }) {
           ? "Please update the app to share as image"
           : "Could not create image",
       });
-    } finally {
-      setSharing(false);
-    }
-  };
-
-  const shareAsPdf = async () => {
-    if (!tx) return;
-    setShareModal(false);
-    try {
-      setSharing(true);
-      const html = buildReceiptHTML();
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      if (!uri) throw new Error("No PDF produced");
-      const label =
-        String(tx.transref || tx.ref || "transaction").replace(/[^A-Za-z0-9_-]/g, "") ||
-        "transaction";
-      const attempts = [uri];
-      const dirs = [FileSystem.cacheDirectory, FileSystem.documentDirectory];
-      for (const dir of dirs) {
-        if (!dir) continue;
-        try {
-          const dest = dir + "Receipt-" + label + ".pdf";
-          const info = await FileSystem.getInfoAsync(dest).catch(() => null);
-          if (info && info.exists)
-            await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
-          await FileSystem.copyAsync({ from: uri, to: dest });
-          attempts.push(dest);
-        } catch (e) {
-          console.log("[receipt] copy failed:", dir, e && e.message);
-        }
-      }
-      let shared = false;
-      for (const a of attempts) {
-        try {
-          await shareFile(a, "application/pdf");
-          shared = true;
-          break;
-        } catch (e) {
-          if (e && e.name === "AbortError") {
-            shared = true;
-            break;
-          }
-          console.log("[receipt] share failed:", a, e && e.message);
-        }
-      }
-      if (shared) {
-        Toast.show({ type: "success", text1: "Receipt ready to share" });
-      } else {
-        await Print.printAsync({ uri });
-        Toast.show({ type: "info", text1: "Save or share the PDF from the print screen" });
-      }
-    } catch (e) {
-      console.error(e);
-      Toast.show({ type: "error", text1: "Failed to generate PDF" });
     } finally {
       setSharing(false);
     }
@@ -445,7 +347,7 @@ export default function TransactionReceiptScreen({ navigation, route }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setShareModal(true)}
+            onPress={shareAsImage}
             disabled={sharing}
             style={[styles.shareBtn, sharing && { opacity: 0.7 }]}
           >
@@ -469,39 +371,6 @@ export default function TransactionReceiptScreen({ navigation, route }) {
           <Text style={styles.buyAgainText}>Buy Another</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <Modal transparent visible={shareModal} animationType="slide" onRequestClose={() => setShareModal(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShareModal(false)}>
-          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 16 }]}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Share Receipt</Text>
-
-            <TouchableOpacity onPress={shareAsImage} style={styles.modalOption}>
-              <View style={[styles.modalIcon, { backgroundColor: "#eef2ff" }]}>
-                <Ionicons name="image" size={20} color="#4f46e5" />
-              </View>
-              <View>
-                <Text style={styles.modalOptionTitle}>Share as Image</Text>
-                <Text style={styles.modalOptionSub}>Save the receipt as a picture</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={shareAsPdf} style={styles.modalOption}>
-              <View style={[styles.modalIcon, { backgroundColor: "#eef2ff" }]}>
-                <Ionicons name="document-text" size={20} color="#4f46e5" />
-              </View>
-              <View>
-                <Text style={styles.modalOptionTitle}>Share as PDF</Text>
-                <Text style={styles.modalOptionSub}>Formatted document receipt</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => setShareModal(false)} style={styles.modalCancel}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 }
@@ -711,48 +580,5 @@ const styles = StyleSheet.create({
 
   buyAgain: { alignItems: "center", marginTop: 14, paddingVertical: 10 },
   buyAgainText: { fontSize: 14, fontWeight: "700", color: COLORS.primary },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,.45)",
-    justifyContent: "flex-end",
-  },
-  modalSheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    paddingBottom: 32,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#e2e8f0",
-    alignSelf: "center",
-    marginBottom: 16,
-  },
-  modalTitle: { fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 16 },
-  modalOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    backgroundColor: "#f8fafc",
-    marginBottom: 10,
-  },
-  modalIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalOptionTitle: { fontSize: 14, fontWeight: "700", color: "#09090b" },
-  modalOptionSub: { fontSize: 12, color: "#94a3b8", marginTop: 1 },
-  modalCancel: { alignItems: "center", paddingVertical: 12 },
-  modalCancelText: { fontSize: 14, fontWeight: "600", color: "#94a3b8" },
 });
 
