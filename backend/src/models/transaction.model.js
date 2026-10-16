@@ -23,6 +23,7 @@ const TransactionModel = {
     profit = 0,
     apiResponse = null,
     apiResponseLog = null,
+    validity = null,
   }) {
     return prisma.transaction.create({
       data: {
@@ -37,6 +38,7 @@ const TransactionModel = {
         profit,
         apiResponse,
         apiResponseLog,
+        validity,
       },
     });
   },

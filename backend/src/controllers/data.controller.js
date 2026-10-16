@@ -9,6 +9,21 @@ const { withPurchaseLock, isBlacklistedCached } = require("../utils/purchaseGuar
 
 const PHONE_REGEX = /^0[789][01]\d{8}$/;
 
+function formatValidity(raw) {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  const days = (n) => (n === 1 ? "1 day" : n === 7 ? "1 week" : n === 30 ? "1 month" : n + " days");
+  const m = s.match(/^(\d+)\s*(d(?:ays?)?|w(?:eeks?)?|m(?:onths?)?)?$/);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    if (!m[2] || m[2].startsWith("d")) return days(n);
+    if (m[2].startsWith("w")) return n === 1 ? "1 week" : n + " weeks";
+    return n === 1 ? "1 month" : n + " months";
+  }
+  return String(raw).trim();
+}
+
 function sortByPrice(plans) {
   return plans.sort(
     (a, b) => parseFloat(a.userPrice || 0) - parseFloat(b.userPrice || 0),
@@ -335,6 +350,7 @@ async function purchase(req, res) {
         profit: sellPrice - costPrice,
         apiResponse: null,
         apiResponseLog: null,
+        validity: formatValidity(plan.validity),
       });
 
       const result = await vtuService.purchaseData({

@@ -91,6 +91,7 @@ model Transaction {
   profit         Float    @default(0)
   apiResponse    String?
   apiResponseLog String?
+  validity       String?
   date           DateTime @default(now())
   user           User     @relation(fields: [userId], references: [id])
 
