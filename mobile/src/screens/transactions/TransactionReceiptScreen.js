@@ -123,7 +123,7 @@ export default function TransactionReceiptScreen({ navigation, route }) {
   const [tx, setTx] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logoUrl, setLogoUrl] = useState(null);
-  const [siteName, setSiteName] = useState("Kiru Data");
+  const [siteName, setSiteName] = useState("Gwarzo Data Sub");
   const [sharing, setSharing] = useState(false);
   const shotRef = useRef(null);
 
@@ -321,8 +321,8 @@ export default function TransactionReceiptScreen({ navigation, route }) {
                 <Text
                   style={[
                     styles.rowValue,
-                    r.highlight && { fontWeight: "900", fontSize: 15 },
-                    r.mono && { fontFamily: "monospace", fontSize: 12 },
+                    r.highlight && { fontWeight: "900", fontSize: 17 },
+                    r.mono && { fontFamily: "monospace", fontSize: 13 },
                   ]}
                   numberOfLines={3}
                 >
@@ -421,40 +421,40 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,.05)",
   },
   logoWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 76,
+    height: 76,
+    borderRadius: 22,
     backgroundColor: "rgba(15,23,42,.55)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,.15)",
-    padding: 6,
-    marginBottom: 8,
+    padding: 10,
+    marginBottom: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   logoImg: { width: "100%", height: "100%" },
   logoFallback: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 76,
+    height: 76,
+    borderRadius: 22,
     backgroundColor: "rgba(15,23,42,.55)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,.15)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  logoFallbackText: { color: "#fff", fontSize: 20, fontWeight: "900" },
-  heroSite: { color: "rgba(255,255,255,.9)", fontSize: 14, fontWeight: "700" },
+  logoFallbackText: { color: "#fff", fontSize: 30, fontWeight: "900" },
+  heroSite: { color: "rgba(255,255,255,.9)", fontSize: 16, fontWeight: "700" },
   heroLabel: {
     color: "rgba(255,255,255,.88)",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 2,
     marginTop: 4,
     marginBottom: 10,
   },
-  heroAmount: { color: "#fff", fontSize: 32, fontWeight: "900", letterSpacing: -1 },
+  heroAmount: { color: "#fff", fontSize: 40, fontWeight: "900", letterSpacing: -1 },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -465,8 +465,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
     backgroundColor: "rgba(255,255,255,.18)",
   },
-  statusText: { fontSize: 12, fontWeight: "700" },
-  heroDate: { color: "rgba(255,255,255,.55)", fontSize: 12, marginTop: 10 },
+  statusText: { fontSize: 13, fontWeight: "700" },
+  heroDate: { color: "rgba(255,255,255,.55)", fontSize: 13, marginTop: 10 },
 
   tokenBox: {
     borderWidth: 1.5,
@@ -478,14 +478,14 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   tokenLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: "#4338ca",
     fontWeight: "700",
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   tokenValue: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
     color: "#09090b",
     fontFamily: "monospace",
@@ -504,20 +504,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 13,
     gap: 8,
   },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: "#f4f4f5" },
   rowIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
   },
-  rowLabel: { fontSize: 13, color: "#64748b" },
+  rowLabel: { fontSize: 14, color: "#64748b" },
   rowValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
     color: "#09090b",
     textAlign: "right",
