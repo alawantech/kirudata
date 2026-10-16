@@ -76,7 +76,7 @@ ssh root@163.245.204.115 "cd /var/www/kirudata/backend && npx prisma db push --s
 | `Admin` | Admin panel users with roles and permissions |
 | `AdminSession` | Active admin sessions (refresh tokens, IP, fingerprint) |
 | `AdminAuditLog` | All admin actions (login, logout, CRUD, etc.) |
-| `Transaction` | All purchase transactions |
+| `Transaction` | All purchase transactions (data purchases store a frozen plan `validity`) |
 | `Network` | Network settings (MTN, Airtel, Glo, 9mobile) |
 | `DataPlan` | Data bundle plans |
 | `CableProvider` / `CablePlan` | Cable TV providers and plans |
