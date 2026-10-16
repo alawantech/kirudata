@@ -46,7 +46,8 @@ function statusLabel(s) {
   return String(s ?? "N/A");
 }
 
-function TxItem({ item, onPress }) {
+const TxItem = React.memo(function TxItem({ item }) {
+  const navigation = useNavigation();
   const color = statusColor(item.status);
   const icon =
     item.status === 1
@@ -55,7 +56,11 @@ function TxItem({ item, onPress }) {
         ? "time"
         : "close-circle";
   return (
-    <TouchableOpacity style={styles.txRow} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.txRow}
+      onPress={() => navigation.navigate("Receipt", { ref: item.transref || item.ref })}
+      activeOpacity={0.7}
+    >
       <View style={[styles.txIcon, { backgroundColor: color + "15" }]}>
         <Ionicons name={icon} size={22} color={color} />
       </View>
@@ -79,11 +84,10 @@ function TxItem({ item, onPress }) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
 
   const [filter, setFilter] = useState("All");
   const [allTransactions, setAllTx] = useState([]);
@@ -134,6 +138,8 @@ export default function TransactionsScreen() {
     if (!loadingMore && hasMore) fetchTx(page + 1, false);
   };
 
+  const renderTx = useCallback(({ item }) => <TxItem item={item} />, []);
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.surface }}>
       {/* Header */}
@@ -176,12 +182,11 @@ export default function TransactionsScreen() {
         <FlatList
           data={transactions}
           keyExtractor={(item, i) => item.id?.toString() || String(i)}
-          renderItem={({ item }) => (
-            <TxItem
-              item={item}
-              onPress={() => navigation.navigate("Receipt", { ref: item.transref || item.ref })}
-            />
-          )}
+          renderItem={renderTx}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={9}
+          removeClippedSubviews
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
