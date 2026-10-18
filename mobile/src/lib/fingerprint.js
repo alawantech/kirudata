@@ -1,44 +1,53 @@
-import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 
 const DEVICE_FP_KEY = "device_fingerprint";
 
 let cachedFingerprint = null;
 
-function simpleHash(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(36);
+function uuidv4() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 export async function getDeviceFingerprint() {
   if (cachedFingerprint) return cachedFingerprint;
 
+  // Prefer SecureStore: it survives AsyncStorage/app-data clears.
+  let stored = null;
   try {
-    const stored = await AsyncStorage.getItem(DEVICE_FP_KEY);
-    if (stored) {
-      cachedFingerprint = stored;
-      return stored;
-    }
+    stored = await SecureStore.getItemAsync(DEVICE_FP_KEY);
   } catch {}
+  if (!stored) {
+    try {
+      stored = await AsyncStorage.getItem(DEVICE_FP_KEY);
+    } catch {}
+  }
+  if (stored) {
+    cachedFingerprint = stored;
+    try {
+      await SecureStore.setItemAsync(DEVICE_FP_KEY, stored);
+    } catch {}
+    try {
+      await AsyncStorage.setItem(DEVICE_FP_KEY, stored);
+    } catch {}
+    return stored;
+  }
 
-  const components = [
-    Platform.OS,
-    String(Platform.Version),
-    "zedro-app",
-  ];
-
-  const str = components.join("|||");
-  const fp = "mobile-" + simpleHash(str);
-
+  // First run on this install: mint a unique per-install id. The old
+  // Platform.OS+Version hash was identical for every device on the same OS
+  // version, so users on the same OS kept deleting each other's
+  // recognized-device rows -> OTP on every login.
+  const fp = "mobile-" + uuidv4();
+  try {
+    await SecureStore.setItemAsync(DEVICE_FP_KEY, fp);
+  } catch {}
   try {
     await AsyncStorage.setItem(DEVICE_FP_KEY, fp);
   } catch {}
-
   cachedFingerprint = fp;
   return fp;
 }

@@ -78,11 +78,19 @@ export function ForgotPinModal({ visible, onClose, onSuccess }) {
   };
 
   const handleOtpInput = (text, index) => {
-    if (!/^\d?$/.test(text)) return;
+    const digits = text.replace(/\D/g, "");
+    if (digits.length > 1) {
+      const pasted = digits.slice(0, OTP_LEN).split("");
+      const newOtp = Array(OTP_LEN).fill("");
+      pasted.forEach((d, i) => { newOtp[i] = d; });
+      setOtp(newOtp);
+      setTimeout(() => otpRefs.current[Math.min(pasted.length, OTP_LEN - 1)]?.focus(), 50);
+      return;
+    }
     const newOtp = [...otp];
-    newOtp[index] = text;
+    newOtp[index] = digits;
     setOtp(newOtp);
-    if (text && index < OTP_LEN - 1) {
+    if (digits && index < OTP_LEN - 1) {
       setTimeout(() => otpRefs.current[index + 1]?.focus(), 50);
     }
   };
@@ -204,7 +212,7 @@ export function ForgotPinModal({ visible, onClose, onSuccess }) {
                         onChangeText={(t) => handleOtpInput(t, i)}
                         onKeyPress={(e) => handleOtpKeyDown(e, i)}
                         keyboardType="number-pad"
-                        maxLength={1}
+                        maxLength={6}
                         selectTextOnFocus
                         autoFocus={i === 0}
                       />

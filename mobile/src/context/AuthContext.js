@@ -153,9 +153,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const _clearSession = async () => {
-    try {
-      await client.post("/auth/logout");
-    } catch {}
+    // Local-only session lock (30-min background timeout). Deliberately does
+    // NOT call /auth/logout: that endpoint deletes the recognized-device row,
+    // which forced an OTP on the next Welcome Back login ("OTP every time").
+    // Explicit logout() below still calls it.
     await AsyncStorage.multiRemove([BG_TIME_KEY, CACHED_USER_KEY]);
     await SecureStore.deleteItemAsync("auth_token");
     setToken(null);
@@ -242,6 +243,14 @@ export function AuthProvider({ children }) {
    * dropped too, because after a password change it would be stale.
    */
   const logout = async () => {
+    // Server call FIRST, while the token is still in SecureStore (the axios
+    // interceptor attaches it as Bearer). Send this device's fingerprint so
+    // the backend forgets ONLY this device (next login here needs OTP)
+    // without forcing OTP on the user's other devices.
+    try {
+      const fp = await getDeviceFingerprint();
+      await client.post("/auth/logout", fp ? { deviceFingerprint: fp } : {});
+    } catch {}
     await _clearSession();
     await AsyncStorage.multiRemove([LAST_USER_KEY, CACHED_USER_KEY]);
     setLastUser(null);

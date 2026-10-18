@@ -131,11 +131,19 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   }, [confirmPassword, newPassword, step, passwordStep]);
 
   const handleOtpInput = (index, value) => {
-    if (!/^\d*$/.test(value)) return;
+    const digits = value.replace(/\D/g, "");
+    if (digits.length > 1) {
+      const pasted = digits.slice(0, OTP_LEN).split("");
+      const newCode = Array(OTP_LEN).fill("");
+      pasted.forEach((d, i) => { newCode[i] = d; });
+      setOtpCode(newCode);
+      otpRefs.current[Math.min(pasted.length, OTP_LEN - 1)]?.focus();
+      return;
+    }
     const newCode = [...otpCode];
-    newCode[index] = value.slice(-1);
+    newCode[index] = digits;
     setOtpCode(newCode);
-    if (value && index < OTP_LEN - 1) otpRefs.current[index + 1]?.focus();
+    if (digits && index < OTP_LEN - 1) otpRefs.current[index + 1]?.focus();
   };
 
   const handleBack = useCallback(() => {
@@ -204,7 +212,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                   value={digit}
                   onChangeText={(v) => handleOtpInput(i, v)}
                   keyboardType="number-pad"
-                  maxLength={1}
+                  maxLength={6}
                   autoFocus={i === 0}
                 />
               ))}

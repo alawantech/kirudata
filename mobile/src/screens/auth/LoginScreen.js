@@ -167,9 +167,18 @@ export default function LoginScreen({ navigation }) {
 
   // OTP handlers
   const handleOtpChange = (index, value) => {
-    if (!/^\d*$/.test(value)) return;
-    const newCode = [...otpCode]; newCode[index] = value.slice(-1); setOtpCode(newCode);
-    if (value && index < 5) otpInputRefs.current[index + 1]?.focus();
+    const digits = value.replace(/\D/g, "");
+    if (digits.length > 1) {
+      // Pasted a full code: spread it across the boxes.
+      const pasted = digits.slice(0, 6).split("");
+      const newCode = ["", "", "", "", "", ""];
+      pasted.forEach((d, i) => { newCode[i] = d; });
+      setOtpCode(newCode);
+      otpInputRefs.current[Math.min(pasted.length, 5)]?.focus();
+      return;
+    }
+    const newCode = [...otpCode]; newCode[index] = digits; setOtpCode(newCode);
+    if (digits && index < 5) otpInputRefs.current[index + 1]?.focus();
   };
   const handleOtpKeyPress = (index, e) => {
     if (e.nativeEvent.key === "Backspace" && !otpCode[index] && index > 0) otpInputRefs.current[index - 1]?.focus();
@@ -273,7 +282,7 @@ const handleBiometricLogin = async () => {
 
           <View style={styles.otpContainer}>
             {otpCode.map((digit, i) => (
-              <TextInput key={i} ref={(el) => (otpInputRefs.current[i] = el)} style={[styles.otpBox, digit ? styles.otpBoxFilled : null]} value={digit} onChangeText={(v) => handleOtpChange(i, v)} onKeyPress={(e) => handleOtpKeyPress(i, e)} keyboardType="numeric" maxLength={1} autoFocus={i === 0} selectionColor={COLORS.primary} />
+              <TextInput key={i} ref={(el) => (otpInputRefs.current[i] = el)} style={[styles.otpBox, digit ? styles.otpBoxFilled : null]} value={digit} onChangeText={(v) => handleOtpChange(i, v)} onKeyPress={(e) => handleOtpKeyPress(i, e)} keyboardType="numeric" maxLength={6} autoFocus={i === 0} selectionColor={COLORS.primary} />
             ))}
           </View>
 

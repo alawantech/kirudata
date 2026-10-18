@@ -235,9 +235,18 @@ function logout(req, res) {
     try {
       const decoded = require("jsonwebtoken").decode(raw);
       if (decoded?.exp) blacklistToken(raw, decoded.exp * 1000);
-      // Remove all recognized devices so next login requires OTP
+      // Forget ONLY the device that is logging out (when it sends its
+      // fingerprint), so next login on THIS device requires OTP while the
+      // user's other devices keep their recognition.
       if (decoded?.id) {
-        prisma.recognizedDevice.deleteMany({ where: { userId: decoded.id } }).catch(() => {});
+        const fp = req.body?.deviceFingerprint;
+        prisma.recognizedDevice
+          .deleteMany({
+            where: fp
+              ? { userId: decoded.id, deviceFingerprint: fp }
+              : { userId: decoded.id },
+          })
+          .catch(() => {});
       }
     } catch {}
   }
