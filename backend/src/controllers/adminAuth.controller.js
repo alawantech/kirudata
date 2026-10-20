@@ -394,7 +394,7 @@ async function updateAdmin(req, res) {
     if (name) updateData.name = name;
     if (email) updateData.email = email.toLowerCase().trim();
     if (phone !== undefined) updateData.phone = phone;
-    if (role) {
+    if (role && role !== admin.role) {
       if (admin.role === "super_admin") return res.status(403).json({ ok: false, msg: "Cannot change super admin role." });
       updateData.role = role;
     }
