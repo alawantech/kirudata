@@ -1,6 +1,7 @@
 const axios = require("axios");
 
 const MAILERSEND_API_KEY = process.env.MAILERSEND_API_KEY;
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const MAILERSEND_FROM_EMAIL = process.env.MAILERSEND_FROM_EMAIL || "noreply@gwarzodatasub.com";
 const MAILERSEND_FROM_NAME = process.env.MAILERSEND_FROM_NAME || "KIRU DATA";
 
@@ -26,8 +27,8 @@ const PURPOSE_CONFIG = {
 };
 
 async function sendOtpEmail({ to, otpCode, expiresInMinutes = 20, purpose = "login" }) {
-  if (!MAILERSEND_API_KEY) {
-    console.error("[MailerSend] API key not configured");
+  if (!MAILERSEND_API_KEY && !BREVO_API_KEY) {
+    console.error("[Email] No API key configured (need BREVO_API_KEY or MAILERSEND_API_KEY)");
     throw new Error("Email service not configured");
   }
 
@@ -85,6 +86,29 @@ async function sendOtpEmail({ to, otpCode, expiresInMinutes = 20, purpose = "log
   };
 
   try {
+    // Brevo (transactional sender, 300 emails/day free) — used when
+    // BREVO_API_KEY is configured; otherwise fall back to MailerSend.
+    if (BREVO_API_KEY) {
+      const response = await axios.post(
+        "https://api.brevo.com/v3/smtp/email",
+        {
+          sender: { email: MAILERSEND_FROM_EMAIL, name: MAILERSEND_FROM_NAME },
+          to: [{ email: to }],
+          subject: subjectMap[purpose] || subjectMap.login,
+          htmlContent: html,
+          textContent: text,
+        },
+        {
+          headers: {
+            "api-key": BREVO_API_KEY,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          timeout: 10000,
+        }
+      );
+      return response.status === 201;
+    }
     const response = await axios.post(
       "https://api.mailersend.com/v1/email",
       {
@@ -107,7 +131,7 @@ async function sendOtpEmail({ to, otpCode, expiresInMinutes = 20, purpose = "log
     );
     return response.status === 202;
   } catch (err) {
-    console.error("[MailerSend] Failed to send OTP email:", err.response?.data || err.message);
+    console.error("[Email] Failed to send OTP email:", err.response?.data || err.message);
     return false;
   }
 }
