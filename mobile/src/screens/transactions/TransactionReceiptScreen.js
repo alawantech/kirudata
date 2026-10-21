@@ -18,6 +18,8 @@ import Toast from "react-native-toast-message";
 import client from "../../api/client";
 import { COLORS, RADIUS, SHADOW } from "../../constants/theme";
 
+const LOCAL_LOGO = require("../../../assets/logo-kiru.png");
+
 const API_BASE = client.defaults?.baseURL || "";
 
 const SVC = {
@@ -280,9 +282,9 @@ export default function TransactionReceiptScreen({ navigation, route }) {
             <View style={styles.heroCircle1} />
             <View style={styles.heroCircle2} />
 
-            {logoUrl ? (
+            {LOCAL_LOGO ? (
               <View style={styles.logoWrap}>
-                <Image source={{ uri: logoUrl }} style={styles.logoImg} resizeMode="contain" />
+                <Image source={LOCAL_LOGO} style={styles.logoImg} resizeMode="contain" />
               </View>
             ) : (
               <View style={styles.logoFallback}>

@@ -97,7 +97,7 @@ export default function SplashScreen({ navigation }) {
     inputRange: [0, 1],
     outputRange: [0, BAR_WIDTH],
   });
-  const logo = logoUrl || LOCAL_LOGO;
+  const logo = LOCAL_LOGO;
 
   return (
     <Animated.View style={{ flex: 1, opacity: fadeOut }}>
@@ -107,9 +107,9 @@ export default function SplashScreen({ navigation }) {
         <View pointerEvents="none" style={{ position: "absolute", bottom: -80, right: -60, width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(99,102,241,0.06)" }} />
 
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingBottom: 30 }}>
-          {logo && !(logoFailed && !logoUrl) ? (
+          {logo ? (
             <Image
-              source={logoUrl ? { uri: logoUrl } : LOCAL_LOGO}
+              source={LOCAL_LOGO}
               style={{ width: LOGO_W, height: LOGO_H }}
               resizeMode="contain"
               onError={() => setLogoFailed(true)}

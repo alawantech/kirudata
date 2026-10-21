@@ -225,9 +225,9 @@ export default function WelcomeScreen({ navigation }) {
           paddingTop: (insets.top || 24) + 8,
         }}
       >
-        {logoUrl || (LOCAL_LOGO && !logoFailed) ? (
+        {LOCAL_LOGO ? (
           <Image
-            source={logoUrl ? { uri: logoUrl } : LOCAL_LOGO}
+            source={LOCAL_LOGO}
             style={LOGO_STYLE}
             resizeMode="contain"
             onError={() => setLogoFailed(true)}

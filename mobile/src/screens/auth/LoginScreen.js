@@ -484,14 +484,14 @@ const handleBiometricLogin = async () => {
     if (isReturning) biometric.checkAvailability();
   }, [isReturning]);
 
-  const Logo = ({ size = 140, style }) => (
-    <Image
-      source={logoUrl ? { uri: logoUrl } : LOCAL_LOGO}
-      style={[{ width: size, height: size, borderRadius: size * 0.18 }, style]}
-      resizeMode="contain"
-      onError={() => setLogoUrl(null)}
-    />
-  );
+  const Logo = ({ size = 140, style }) =>
+    LOCAL_LOGO ? (
+      <Image
+        source={LOCAL_LOGO}
+        style={[{ width: size, height: size, borderRadius: size * 0.18 }, style]}
+        resizeMode="contain"
+      />
+    ) : null;
 
   return (
     <View style={styles.container}>

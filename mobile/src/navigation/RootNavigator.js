@@ -98,9 +98,9 @@ function LoadingView() {
       <Animated.View
         style={{ alignItems: "center", transform: [{ scale }], opacity }}
       >
-        {LOCAL_LOGO || logoUrl ? (
+        {LOCAL_LOGO ? (
           <Image
-            source={logoUrl ? { uri: logoUrl } : LOCAL_LOGO}
+            source={LOCAL_LOGO}
             style={{ width: LOGO_W, height: LOGO_H }}
             resizeMode="contain"
             onError={() => setLogoUrl(null)}
