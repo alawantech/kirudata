@@ -22,6 +22,7 @@ import {
   Ticket,
   MessageSquare,
   Users,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useSiteSettings } from "@/context/SiteSettingsContext";
@@ -50,6 +51,7 @@ const SIDEBAR_ITEMS = [
   { label: "Transactions", href: "/dashboard/transactions", icon: Clock },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { label: "Referrals", href: "/dashboard/referrals", icon: Users },
+  { label: "Vendor Upgrade", href: "/dashboard/upgrade", icon: TrendingUp },
   { label: "Profile", href: "/dashboard/profile", icon: User2 },
 ];
 

@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
 import Toast from "react-native-toast-message";
+import * as Clipboard from "expo-clipboard";
 import client from "../../api/client";
 import { COLORS, RADIUS, SHADOW } from "../../constants/theme";
 
@@ -341,7 +342,11 @@ export default function TransactionReceiptScreen({ navigation, route }) {
 
         <View style={styles.actions}>
           <TouchableOpacity
-            onPress={() => Share.share({ message: `${siteName} Receipt\nRef: ${tx.transref || tx.ref}` })}
+            onPress={async () => {
+              const ref = tx.transref || tx.ref || "";
+              await Clipboard.setStringAsync(ref);
+              Toast.show({ type: "success", text1: "Reference copied", text2: ref });
+            }}
             style={styles.outlineBtn}
           >
             <Ionicons name="copy-outline" size={16} color={COLORS.primary} />
