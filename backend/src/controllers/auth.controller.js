@@ -144,7 +144,7 @@ async function login(req, res) {
   // Check if device is recognized
   let isDeviceRecognized = false;
   // Accounts that never require OTP at login (e.g. Play Store test account)
-  const OTP_BYPASS_PHONES = ["08032230464"];
+  const OTP_BYPASS_PHONES = ["08100681296"];
   if (user.phone && OTP_BYPASS_PHONES.includes(user.phone)) {
     isDeviceRecognized = true;
   } else if (deviceFingerprint && user.email) {
