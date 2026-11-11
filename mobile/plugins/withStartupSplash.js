@@ -4,8 +4,8 @@ const {
   withAndroidStyles,
 } = require("@expo/config-plugins");
 
-const WINDOW_BACKGROUND = "@drawable/ic_launcher_background";
-const SPLASH_BACKGROUND = "#ffffff";
+const WINDOW_BACKGROUND = "@color/splashscreen_background";
+const SPLASH_BACKGROUND = "#f8fafc";
 
 const withStartupSplash = (config) => {
   config = withAndroidStyles(config, (cfg) => {

@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
+import { useSafeAreaInsets, initialWindowMetrics } from "react-native-safe-area-context";
 import { COLORS, RADIUS, SHADOW } from "../constants/theme";
 import { ForgotPinModal } from "./ForgotPinModal";
 
@@ -99,6 +100,8 @@ export function TransactionPinModal({
   const [pin, setPin] = useState("");
   const [showForgotPin, setShowForgotPin] = useState(false);
   const bio = useTxBiometric();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, initialWindowMetrics?.insets?.bottom ?? 0);
 
   // Reset on open
   useEffect(() => {
@@ -143,7 +146,7 @@ export function TransactionPinModal({
         onPress={onCancel}
       />
 
-      <View style={styles.sheet}>
+      <View style={[styles.sheet, { paddingBottom: Math.max(bottomInset, 24) + 16 }]}>
         <View style={styles.handle} />
 
         <Text style={styles.title}>{title}</Text>
@@ -253,7 +256,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    paddingBottom: 40,
     ...SHADOW.md,
   },
   handle: {

@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFonts, Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium } from "@expo-google-fonts/poppins";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SPLASH_FONTS as F } from "../constants/splashTheme";
+import * as ExpoSplashScreen from "expo-splash-screen";
 import { COLORS } from "../constants/theme";
 import { API_BASE } from "../api/client";
 import { useAuth } from "../context/AuthContext";
@@ -90,6 +91,10 @@ export default function SplashScreen({ navigation }) {
       if (timer) clearTimeout(timer);
     };
   }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) ExpoSplashScreen.hideAsync().catch(() => {});
+  }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
 

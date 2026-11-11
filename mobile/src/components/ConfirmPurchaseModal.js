@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets, initialWindowMetrics } from "react-native-safe-area-context";
 import { COLORS, RADIUS, SHADOW } from "../constants/theme";
 import NetworkLogo from "./NetworkLogo";
 
@@ -53,6 +54,8 @@ export function ConfirmPurchaseModal({
   discountPct,
 }) {
   const isAir = service === "airtime";
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, initialWindowMetrics?.insets?.bottom ?? 0);
   if (isAir ? !airtimeAmount : !plan) return null;
 
   const paid = isAir ? cost : Number(plan.userPrice || 0);
@@ -70,7 +73,7 @@ export function ConfirmPurchaseModal({
           <View style={styles.backdropFill} />
         </TouchableWithoutFeedback>
 
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(bottomInset, 24) + 16 }]}>
           <View style={styles.head}>
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>Confirm purchase</Text>
@@ -154,7 +157,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 26,
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 28,
     ...SHADOW.lg,
   },
   head: {

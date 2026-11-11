@@ -7,9 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#f8fafc"
     },
     "ios": {
       "supportsTablet": true,
@@ -46,7 +46,16 @@
       "expo-web-browser",
       "expo-sharing",
       "expo-status-bar",
-      "./plugins/withStartupSplash.js"
+      "./plugins/withStartupSplash.js",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-logo.png",
+          "backgroundColor": "#f8fafc",
+          "imageWidth": 250,
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "extra": {
       "eas": {
